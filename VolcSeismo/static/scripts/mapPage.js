@@ -58,10 +58,13 @@ function initMap() {
     //set the inital map view, if requested
     if (typeof(volcano) !== 'undefined') {
         $('#' + volcano.toLowerCase() + '_select').click();
+    } else {
+        $('#locsLeft button:first').click();
     }
 }
 
 function initFinal() {
+    //matomo analytics tracking
     var _paq = window._paq = window._paq || [];
     /* tracker methods like "setCustomDimension" should be called before "trackPageView" */
     _paq.push(['trackPageView']);
@@ -69,7 +72,7 @@ function initFinal() {
     (function() {
         var u = "https://apps.avo.alaska.edu/analytics/";
         _paq.push(['setTrackerUrl', u + 'matomo.php']);
-        _paq.push(['setSiteId', '2']);
+        _paq.push(['setSiteId', '3']);
         var d = document,
             g = d.createElement('script'),
             s = d.getElementsByTagName('script')[0];
