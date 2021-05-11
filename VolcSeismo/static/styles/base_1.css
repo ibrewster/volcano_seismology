@@ -1,0 +1,53 @@
+.inlineblock {
+    display: inline-block;
+}
+
+button.tab {
+    vertical-align: bottom;
+    border-bottom: none;
+    margin: 0px;
+    margin-right: 4px;
+    padding: 5px;
+    border: 1px solid #C9C9C9;
+    background-color: #EAEAEA;
+    background: linear-gradient(to top, #FFFFFF, #DBDBDB);
+    position: relative;
+    top: 1px;
+    z-index: 2;
+    border-top-right-radius: 5px;
+    border-top-left-radius: 5px;
+    font-size: 1em;
+}
+
+button.tab.current {
+    background-color: white;
+    border-bottom: 1px solid white;
+    height: 2.25em;
+}
+
+button.tab:not(.current):hover {
+    background-color: #DFDFDF;
+    border-left-color: #878787;
+    border-top-color: #878787;
+    border-right-color: #878787;
+}
+
+.topAlign {
+    vertical-align: top;
+}
+
+html,
+body {
+    min-width: 700px;
+    width: 100%;
+}
+
+@media print {
+    .noPrint {
+        display: none !important;
+    }
+}
+
+.capitalize {
+    text-transform: capitalize;
+}

@@ -1,0 +1,8 @@
+bin
+include
+lib
+etc
+share
+__pycache__
+.DS_Store
+alaska_2s.grd

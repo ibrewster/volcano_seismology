@@ -1,0 +1,69 @@
+body{
+    #background-color:lightgrey;
+    #text-align:center;
+}
+
+#editDialog input, #editDialog select{
+    height:2em;
+    line-height:2em;
+    margin-left:5px;
+}
+
+#editDialog select{
+    background:initial;
+}
+
+#tilt_orientations{
+    border-collapse:collapse;
+    border:3px inset;
+}
+
+#main_body{
+    display:inline-block;
+}
+
+.panel{
+    width: 756px;
+}
+
+#tableWrapper{
+    padding:40px;
+    border:3px inset;
+    border-radius:10px;
+    background-color:#EEE;
+    display:inline-block;
+    padding-bottom:5px;
+}
+
+#tilt_orientations, #tilt_orientations td, #tilt_orientations th{
+    border: 1px solid black;
+    padding: 2px 10px;
+}
+
+td.station{
+    vertical-align:top;
+}
+
+td.delete{
+    cursor:pointer
+}
+
+#tilt_orientations>tbody>tr:hover td.dataField{
+    background-color:lightblue;
+    cursor:pointer;
+}
+
+#editDialog{
+    display:inline-grid;
+    grid-template-columns:auto auto auto auto auto;
+}
+
+.deleteImg{
+    width:1em;
+    height:1em;
+}
+
+.endButton{
+    text-align:right;
+    margin-top:5px;
+}

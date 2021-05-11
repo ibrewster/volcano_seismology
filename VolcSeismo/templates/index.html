@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="viewport" content="width=800">
+    <meta http-equiv="Content-Type" content="text/html;charset=UTF-8" />
+
+    <!--generic utility scripts, like jquery. can be swaped for other versions most likely-->
+    <script type="text/javascript" src="static/scripts/jquery-3.5.1.min.js" defer></script>
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDsVC9aKGnGWcgq4WeqiJN7ZDf-PaHuwYs" defer></script>
+    <script src="static/scripts/plotly.min.js" defer></script>
+
+    <!--Application specific scripts-->
+    <script type="text/javascript" src="static/scripts/mapPage.js" defer></script>
+    <script type="text/javascript" src="static/scripts/base_2.js" defer></script>
+
+    <!--Application specific CSS files-->
+    <link rel="stylesheet" href="static/styles/base_1.css" />
+    <link rel="stylesheet" href="static/styles/mapPage_common.css"> 
+</head>
+
+<body>
+    <div id="main_body">
+    {% include "mapContent.html" %}
+    </div>
+</body>
+
+</html>

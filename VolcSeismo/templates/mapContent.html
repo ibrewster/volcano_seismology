@@ -1,0 +1,38 @@
+<div id="headers" class="noPrint">
+    <img src='static/img/Hamburger_icon.svg' class="menu">
+    <div id="locations">
+        <div id=locsLeft class="locsDiv">
+            {% for loc,data in locations|dictsort %}<button id="{{loc | replace(' ','')|lower}}_select" class="tab location{% if loop.first %} current{%endif%}" data-lat={{data[ 'center_lat']}} data-lon={{data[ 'center_lon']}} data-zoom={{data[ 'zoom']}}
+                data-site='{{loc | replace(' ',' ')}}'>{{loc}}</button>{%endfor%}
+        </div>
+        <div id=locsRight class="locsDiv">
+        </div>
+    </div>
+</div>
+<div id="content">
+    <div id="mapContainer" class="noPrint">
+        <div id="options">
+            <!--
+	    Show Sites:
+            <span class="siteType continuous">
+                <input id="type_continuous" type="checkbox" class="siteCheck" data-type="continuous" checked><label for="type_continuous">Continuous</label>
+            </span>
+            <span class="siteType pbo" style="display:none">
+                <input id="type_pbo" type="checkbox" class="siteCheck" data-type="pbo" checked><label for="type_pbo">PBO</label>
+            </span>
+            <span class="siteType campaign">
+                <input id="type_campaign" type="checkbox" class="siteCheck" data-type="campaign"><label for="type_campaign">Campaign</label>
+            </span>
+            <br>
+	    -->
+            <button id="download">Download</button>
+
+            <span id="instrText">Hold shift while clicking to graph multiple stations</span>
+        </div>
+
+        <div id=mapWrapper>
+            <div id="map">
+            </div>
+        </div>
+    </div>
+</div>

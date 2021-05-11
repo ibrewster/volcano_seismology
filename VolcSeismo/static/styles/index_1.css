@@ -1,0 +1,31 @@
+body{
+	background-color:black;
+	
+}
+
+hr.top{
+	height:4px;
+	background-color:yellow;
+}
+
+.headtext{
+	font-weight:bold;
+	font-family: NewTimes;
+	font-size: xx-large;
+	color:yellow;
+}
+
+div.volcano{
+	display:inline-block;
+	margin:10px;
+}
+
+div.title{
+	text-align:center;
+}
+
+div.volcano div.title a{
+	font-size:medium;
+	color:#66FF66;
+	font-family:NewTimes;
+}
