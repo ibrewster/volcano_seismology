@@ -6,8 +6,10 @@ directory action trigger or whatever.
 """
 
 import csv
+import functools
 import os
 
+from concurrent.futures import ProcessPoolExecutor
 from datetime import datetime, timezone
 
 import psycopg2
@@ -50,7 +52,8 @@ with DBCursor() as cursor:
     STATIONS = {x[1]: x[0] for x in cursor}
 
 
-def load_file(file_path, station, channel):
+def load_file(station, channel, file_path,):
+    print("Loading file", file_path)
     with open(file_path, 'r') as file, DBCursor() as cursor:
         csv_file = csv.reader(file)
         fields = next(csv_file)
@@ -77,11 +80,11 @@ def load_file(file_path, station, channel):
 
 
 if __name__ == "__main__":
-    file_dir = '/Users/israel/Downloads/Volcano Seismology Data/drive-download-20210507T200936Z-001'
+    file_dir = '/data/volcano_seismology/volcano_cleveland/station_CLES/channel_BHZ/'
     files = os.listdir(file_dir)
     station = STATIONS['CLES']
     channel = 'BHZ'
-    for file in files:
-        file = os.path.join(file_dir, file)
-        print("Loading file", file)
-        load_file(file, station, channel)
+    processor = functools.partial(load_file, station, channel)
+    files = [os.path.join(file_dir, file) for file in files]
+    with ProcessPoolExecutor() as executor:
+        results = executor.map(processor, files, chunksize = len(files) // os.cpu_count())
