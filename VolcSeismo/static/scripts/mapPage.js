@@ -17,7 +17,7 @@ var menuMode = false;
 
 $(document).ready(function() {
 
-    $(document).on('click', 'button.location', setMapLocation);
+    $(document).on('change', '#volcSelect', setMapLocation);
     $(document).on('click', 'img.closeBtn', closeGraph);
     $(document).on('click', 'span.dateBtns button', dateRangeClicked);
     $(document).on('click', 'input.channelOption', generateGraphs);
@@ -57,9 +57,9 @@ function initMap() {
 
     //set the inital map view, if requested
     if (typeof(volcano) !== 'undefined') {
-        $('#' + volcano.toLowerCase() + '_select').click();
+        $('#volcSelect').val(volcano);
     } else {
-        $('#locsLeft button:first').click();
+        $('#volcSelect').change();
     }
 }
 
@@ -976,8 +976,9 @@ function setMapLocation() {
     $('.extraData').hide();
     $('#content').show();
 
-    var center = { lat: $(this).data('lat'), lng: $(this).data('lon') };
-    var zoom = $(this).data('zoom');
+    var volc = $(this).find('option:selected')
+    var center = { lat: volc.data('lat'), lng: volc.data('lon') };
+    var zoom = volc.data('zoom');
 
     //this will de-select the current tab
     map.setCenter(center);

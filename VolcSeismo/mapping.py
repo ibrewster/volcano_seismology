@@ -1,7 +1,7 @@
 from . import app
 
 from . import utils
-from .config import locations
+from .station_config import locations
 from .utils import stations
 
 import os
@@ -12,6 +12,8 @@ import uuid
 
 from datetime import datetime, timedelta, timezone
 
+import ujson
+import json
 import numpy
 import flask
 import flask.helpers
@@ -22,10 +24,23 @@ import plotly.graph_objects as go
 from PIL import Image
 
 
+def volc_sort_key(volc):
+    name, data = volc
+    lon = data['longitude']
+    if lon > 0:
+        lon -= 360
+    return lon
+
+
 @app.route("/")
 def _map():
     flask.session['public'] = False
-    args = {'locations': locations}
+
+    sort_order = [key for key, value in
+                  sorted(locations.items(),
+                         key = volc_sort_key,
+                         reverse = True)]
+    args = {'locations': locations, 'volcOrder': sort_order, }
     return flask.render_template("index.html", **args)
 
 
@@ -513,7 +528,7 @@ def _get_scale_parameters(scale_len, bounds):
 def list_stations():
     max_age = int(flask.request.args.get('age', -1))
     if max_age < 0:
-        max_age = 2 if flask.session.get('public', False) else 10
+        max_age = 10
 
     stns = utils.load_stations(max_age)
     return flask.jsonify(stns)
@@ -544,7 +559,9 @@ def get_graph_data(as_json=True, station=None, channel = None,
 
         if factor == "auto":
             span = (date_to - date_from).total_seconds()
-            if span > 1209600:  # two weeks
+            if span > 2592000:  # One month
+                factor = 1
+            elif span > 1209600:  # two weeks
                 factor = 5
             elif span > 604800:  # one week
                 factor = 25
@@ -565,12 +582,15 @@ def get_graph_data(as_json=True, station=None, channel = None,
                         factor = factor)
 
     if as_json:
-        return flask.jsonify(data)
+        str_data = ujson.dumps(data)
+        return flask.Response(response=str_data, status=200,
+                              mimetype="application/json")
     else:
         return data
 
 
 PERCENT_LOOKUP = {
+    1: '90=0',  # Keep every 90th row
     5: '20=0',  # keep every 20th row
     25: '4=0',  # keep every fourth row
     50: '2=0',  # keep every other row
@@ -588,7 +608,6 @@ def load_db_data(station, channel,
         'ssa_max10': [],
         'sd_ssa_max10': [],
         'dates': [],
-        'dateobj': [],
         'info': {
 
         },
@@ -596,7 +615,6 @@ def load_db_data(station, channel,
 
     SQL = f"""
     SELECT
-        datetime AT TIME ZONE 'UTC',
         to_char(datetime AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS"Z"') as text_date,
         freq_max10,
         sd_freq_max10,
@@ -619,10 +637,14 @@ def load_db_data(station, channel,
 
         args.append(channel)
 
-        cursor.execute("""SELECT
-        min(datetime), max(datetime)
+        cursor.execute("""
+        SELECT
+            to_char(min(datetime AT TIME ZONE 'UTC'),'YYYY-MM-DD"T"HH24:MI:SS"Z"'),
+            to_char(max(datetime AT TIME ZONE 'UTC'),'YYYY-MM-DD"T"HH24:MI:SS"Z"')
         FROM data
-        WHERE station=%s AND channel=%s""",
+        WHERE station=%s
+        AND channel=%s
+        """,
                        args)
         info = cursor.fetchone()
         graph_data['info']['min_date'] = info[0]
@@ -644,14 +666,14 @@ def load_db_data(station, channel,
         ORDER BY datetime
         """
 
-        SQL_HEADER = ('dateobj', 'dates', 'freq_max10', 'sd_freq_max10',
+        SQL_HEADER = ('dates', 'freq_max10', 'sd_freq_max10',
                       'ssa_max10', 'sd_ssa_max10')
 
         t1 = time.time()
         cursor.execute(SQL, args)
         if cursor.rowcount == 0:
             return graph_data  # No data
-
+        print("Ran query in", time.time() - t1)
         results = numpy.asarray(cursor.fetchall()).T
         t3 = time.time()
         print("Got results in", t3 - t1)
