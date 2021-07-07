@@ -155,6 +155,10 @@ function setZoomRange(event, params) {
     var dates = parseRangeDates(xaxis_range);
     var dateFrom = new Date(dates[0]);
     var dateTo = new Date(dates[1]);
+    var dateSpan = dateTo - dateFrom;
+    var days = (dateSpan / 1000) / 60 / 60 / 24;
+    console.log("New date range:");
+    console.log(days);
 
     //Range and limits here are off by one. Adjust
     dateTo = new Date(dateTo.setDate(dateTo.getDate() - 1));
@@ -276,8 +280,8 @@ function rescaleY(parentChart, dateFrom, dateTo, run) {
     if (typeof(startValue !== 'undefined'))
         startIdx = dateData.indexOf(startValue);
 
-    //this will return the value or undefined, so I need to find the index of the value and handle undefined.
     var stopIdx = dateData.length - 1; //minus 1 because index is 0 based, length is 1 based
+    //this will return the value or undefined, so I need to find the index of the value and handle undefined.
     var stopValue = dateData.find(function(element) {
         return element >= dateToString
     });
@@ -304,9 +308,12 @@ function rescaleY(parentChart, dateFrom, dateTo, run) {
             if (yData[j] < min) { min = yData[j]; }
         }
 
+        var spread = max - min;
+        var padding = .05 * spread; //5% total value buffer
         //leave a small buffer on either side when displaying
-        max += 1;
-        min -= 1;
+        max += padding;
+        if (min != 0)
+            min -= padding;
 
         layouts[yAxis + '.range'] = [min, max];
     }
