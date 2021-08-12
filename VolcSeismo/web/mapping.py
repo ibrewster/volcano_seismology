@@ -638,12 +638,17 @@ def load_db_data(station, channel,
         args.append(channel)
 
         cursor.execute("""
-        SELECT
-            to_char(min(datetime AT TIME ZONE 'UTC'),'YYYY-MM-DD"T"HH24:MI:SS"Z"'),
-            to_char(max(datetime AT TIME ZONE 'UTC'),'YYYY-MM-DD"T"HH24:MI:SS"Z"')
-        FROM data
-        WHERE station=%s
-        AND channel=%s
+SELECT
+	to_char(mintime AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SSZ'),
+	to_char(maxtime AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SSZ')
+FROM
+(SELECT
+	   min(datetime) as mintime,
+	   max(datetime) as maxtime
+	FROM data
+	  WHERE station=%s
+	  AND channel=%s
+) s1;
         """,
                        args)
         info = cursor.fetchone()
