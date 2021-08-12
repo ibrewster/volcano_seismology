@@ -1,0 +1,3 @@
+[submodule "VolcSeismo/waveform"]
+	path = VolcSeismo/waveform
+	url = https://github.com/ibrewster/waveform_fetch.git

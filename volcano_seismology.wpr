@@ -1,17 +1,17 @@
 #!wing
-#!version=7.0
+#!version=8.0
 ##################################################################
 # Wing project file                                              #
 ##################################################################
 [project attributes]
 proj.directory-list = [{'dirloc': loc('.'),
-                        'excludes': [u'bin',
-                                     u'lib',
-                                     u'share',
-                                     u'requirements.txt',
-                                     u'pyvenv.cfg',
-                                     u'etc',
-                                     u'include'],
+                        'excludes': ['bin',
+                                     'lib',
+                                     'share',
+                                     'requirements.txt',
+                                     'pyvenv.cfg',
+                                     'etc',
+                                     'include'],
                         'filter': '*',
                         'include_hidden': False,
                         'recursive': True,
