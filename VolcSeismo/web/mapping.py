@@ -1,9 +1,3 @@
-from . import app
-
-from . import utils
-from .station_config import locations
-from .utils import stations
-
 import os
 import math
 import time
@@ -11,6 +5,12 @@ import json
 import uuid
 
 from datetime import datetime, timedelta, timezone
+
+from . import app
+from . import utils
+from .utils import stations
+
+from config import locations
 
 import ujson
 import json
