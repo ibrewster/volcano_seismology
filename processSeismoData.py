@@ -1,4 +1,4 @@
-from VolcSeismo import run
+from VolcSeismo.process import run
 
 if __name__ == "__main__":
     run()

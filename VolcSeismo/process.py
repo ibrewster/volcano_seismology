@@ -36,7 +36,11 @@ def run():
         cur.execute("SELECT station,dtfrom,dtto FROM missed ORDER BY dtto DESC")  # May be empty
 
         for station, dtfrom, dtto in cur:
-            loc = {station: stations[station]}
+            try:
+                loc = {station: stations[station]}
+            except KeyError:
+                pass  # No metadata for this station, can't be processed.
+
             dtfrom = UTCDateTime(dtfrom)
             dtto = UTCDateTime(dtto)
             if (UTCDateTime() - dtfrom) / 60 / 60 > 2:
