@@ -1,3 +1,7 @@
+cache
+Dockerfile.local
+config.ini
+station_config.py
 bin
 include
 lib
