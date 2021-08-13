@@ -4,3 +4,9 @@ psycopg2-binary
 obspy
 pandas
 pymysql
+plotly
+pillow
+ujson
+python-dateutil
+pytz
+requests
