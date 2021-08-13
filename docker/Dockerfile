@@ -9,11 +9,9 @@ WORKDIR /code
 RUN apt-get update && apt-get -y upgrade && apt-get -y install git cron nano python3 python3-pip libgdal-dev fftw3-dev r-base
 RUN git clone https://github.com/ibrewster/volcano_seismology.git .
 RUN Rscript docker/install_r_packages.R
-RUN pip3 install --upgrade -r requirements.txt
 RUN pip3 install uwsgi
 ADD http://worldtimeapi.org/api/ip.txt /tmp/bustcache
 RUN git pull
-RUN pip3 install --upgrade -r requirements.txt
 RUN python3 setup.py -y
 RUN mkdir /var/log/volcseismo && chmod 777 /var/log/volcseismo
 RUN mkdir /var/run/volcseismo && chmod 777 /var/run/volcseismo
