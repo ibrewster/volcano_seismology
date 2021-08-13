@@ -12,6 +12,7 @@ RUN Rscript docker/install_r_packages.R
 RUN pip3 install uwsgi
 ADD http://worldtimeapi.org/api/ip.txt /tmp/bustcache
 RUN git pull
+RUN pip3 install --upgrade -r requirements.txt
 RUN python3 setup.py -y
 RUN mkdir /var/log/volcseismo && chmod 777 /var/log/volcseismo
 RUN mkdir /var/run/volcseismo && chmod 777 /var/run/volcseismo
