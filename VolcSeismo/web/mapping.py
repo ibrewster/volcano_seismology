@@ -10,7 +10,7 @@ from . import app
 from . import utils
 from .utils import stations
 
-from config import locations
+from VolcSeismo.config import locations
 
 import ujson
 import json
