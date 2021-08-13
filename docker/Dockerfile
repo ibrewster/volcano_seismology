@@ -19,4 +19,6 @@ COPY docker/generate-cron /etc/cron.d/generate-cron
 RUN chmod 0644 /etc/cron.d/generate-cron
 RUN crontab /etc/cron.d/generate-cron
 RUN touch /var/log/cron.log
+RUN touch /var/log/volcseismo/error.log && chmod 777 /var/log/volcseismo/error.log
+RUN mkdir VolcSeismo/.plotly && chown daemon VolcSeismo/.plotly && chmod 777 VolcSeismo/.plotly
 CMD cron && uwsgi -i ./VolcSeismo/web/volcseismo.ini

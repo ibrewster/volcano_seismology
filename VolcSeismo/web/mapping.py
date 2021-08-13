@@ -26,10 +26,7 @@ from PIL import Image
 
 def volc_sort_key(volc):
     name, data = volc
-    lon = data['longitude']
-    if lon > 0:
-        lon -= 360
-    return lon
+    return data['sort']
 
 
 @app.route("/")

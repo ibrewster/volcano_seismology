@@ -213,6 +213,8 @@ def generate_stations():
         sort_lon = lon1 if lon1 < 0 else lon1 - 360
         locations[volc] = {
             'sort': sort_lon,
+            'latitude': lat1,
+            'longitude': lon1,
             'stations': [],
         }
 
