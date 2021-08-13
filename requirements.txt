@@ -1,3 +1,5 @@
+numpy
 flask
 psycopg2-binary
 obspy
+pandas
