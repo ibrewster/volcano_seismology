@@ -693,26 +693,19 @@ function generateSubgraphLayout(data, titles) {
             'ygap': 0.05,
         },
         'font': { 'size': 12 },
-        "images": [{
-            "source": `${img_path}/uaf_gi_logo.png`,
-            "xref": "paper",
-            "yref": "paper",
-            "x": 1,
-            "y": 1.008,
-            "sizex": .27,
-            "sizey": .27,
-            "xanchor": "right",
-            "yanchor": "bottom"
-        }, {
-            "source": `${img_path}/avo_logo.png`,
-            "xref": "paper",
-            "x": .72,
-            "y": 1.008,
-            "sizex": .1062,
-            "sizey": .27,
-            "xanchor": "right",
-            "yanchor": "bottom"
-        }],
+        "images": [
+            {
+                "source": `${img_path}/logos.png`,
+                "xref": "paper",
+                "yref": "paper",
+                "x": 1,
+                "y": 1.008,
+                "sizex": .3762,
+                "sizey": .27,
+                "xanchor": "right",
+                "yanchor": "bottom"
+            }
+        ],
     }
 
 
