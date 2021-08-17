@@ -63,124 +63,61 @@ def get_graph_image():
     width = int(flask.request.args.get('width', 900))
 
     title = station
-    if is_tilt:
-        title += ' Tilt '
-        data = _get_tilt_data(date_from, date_to, station, raw=True)
 
-        if date_from is None:
-            date_from = parse(data['search_start'] + "Z")
+    title += ' - '
+    data = get_graph_data(False, station=station, date_from=date_from, date_to=date_to)
 
-        x_trace = gen_tilt_data_dict(data['dates'], data['x_tilt'], 'red', 2)
-        y_trace = gen_tilt_data_dict(data['dates'], data['y_tilt'], 'blue', 3)
-        temp_trace = gen_tilt_data_dict(data['dates'], data['temps'], 'black', 4)
+    if not data['dates']:
+        return "no data found", 404
 
-        date_span = (date_to - date_from)
+    if date_from is None:
+        date_from = parse(data['dates'][0] + "T00:00:00Z")
 
-        if date_span.total_seconds() < 60 * 60 * 24:
-            # One day (or less)
-            line_dict = {'width', .5}
-            for trace in (x_trace, y_trace, temp_trace):
-                trace['mode'] = 'lines'
-                trace['line'] = line_dict
+    freq_max = gen_plot_data_dict(data['dates'], data['freq_max10'])
+    sd_freq_max = gen_plot_data_dict(data['dates'], data['sd_freq_max10'], 2)
+    ssa_max = gen_plot_data_dict(data['dates'], data['ssa_max10'], 3)
+    sd_ssa_max = gen_plot_data_dict(data['dates'], data['sd_ssa_max10'], 4)
 
-        polar_graphs = makePolarTrace(data)
-        r_max = scalePolarPlot(x_trace['x'], polar_graphs[0], date_from, date_to)
+    plot_data = [freq_max, sd_freq_max, ssa_max, sd_ssa_max]
 
-        plot_data = [x_trace, y_trace, temp_trace]
+    layout = gen_subgraph_layout(plot_data,
+                                 ['Freq Max10 (Hz)', 'SD Freq Max10 (Hz)',
+                                  'SSA Max10 (counts)', 'SD SSA Max10 (counts)'],
+                                 date_from, date_to)
+    layout['annotations'] = [{
+        "xref": 'paper',
+        "yref": 'paper',
+        "x": 0.004,
+        "xanchor": 'left',
+        "y": 1.005,
+        "yanchor": 'bottom',
+        "text": f"Channel: {channel}",
+        "showarrow": False,
+        "font": {"size": 12}
+    }]
 
-        layout = gen_subgraph_layout(plot_data,
-                                     ['', 'X (Microradians)', 'Y (Microradians)', 'Degrees C'],
-                                     date_from, date_to)
-
-        plot_data += list(polar_graphs)
-        layout = makePolarLayout(layout, data, station)
-
-        if r_max is not None:
-            layout['polar']['radialaxis'] = {'range': [0, math.ceil(r_max)]}
-
-        # Change the tick style depending on time span
-        minute_span = date_span.total_seconds() / 60
-        if minute_span < 5:
-            tickformat = "%H:%M:%S"
-        elif minute_span <= 36 * 60:  # 36 hours
-            tickformat = "%m/%d %H:%M"
-        else:
-            tickformat = "%Y-%m-%d"
-
-        x_range = [date_from, date_to]
-        for axis in ['xaxis2', 'xaxis3', 'xaxis4']:
-            layout[axis]['tickformat'] = tickformat
-            layout[axis]['range'] = x_range
-
-    else:
-        title += ' - '
-        data = get_graph_data(False, station=station, baseline_station=baseline,
-                              date_from=date_from, date_to=date_to, new_data = new_data)
-
-        if not data['dates']:
-            return "no data found", 404
-
-        if date_from is None:
-            date_from = parse(data['dates'][0] + "T00:00:00Z")
-
-        ew_trace = gen_plot_data_dict(data['dates'], data['EW'], data['EWE'], data['rapid'])
-        ns_trace = gen_plot_data_dict(data['dates'], data['NS'], data['NSE'], data['rapid'], 2)
-        ud_trace = gen_plot_data_dict(data['dates'], data['UD'], data['UDE'], data['rapid'], 3)
-
-        plot_data = [ew_trace, ns_trace, ud_trace]
-        layout = gen_subgraph_layout(plot_data,
-                                     ['EAST (cm)', 'NORTH (cm)', 'VERTICAL (cm)'],
-                                     date_from, date_to)
-        layout['annotations'] = [{
-            "xref": 'paper',
-            "yref": 'paper',
-            "x": 0.004,
-            "xanchor": 'left',
-            "y": 1.00,
-            "yanchor": 'bottom',
-            "text": f"Baseline Station: {baseline}",
-            "showarrow": False,
-            "font": {"size": 11}
-        }]
-
-    title += f'{date_from.strftime("%Y-%m-%d")} to {date_to.strftime("%Y-%m-%d")}'
-    layout['title'] = {'text': title,
-                       'x': .115,
-                       'y': .939,
-                       'xanchor': 'left',
-                       'yanchor': 'bottom',
-                       'font': {
-                           'size': 16,
-                       }, }
-
-    return gen_graph_image(is_tilt, plot_data, layout, fmt, 'inline',
+    # title += f'{date_from.strftime("%Y-%m-%d")} to {date_to.strftime("%Y-%m-%d")}'
+    # layout['title'] = {'text': title,
+    # 'x': .115,
+    # 'y': .939,
+    # 'xanchor': 'left',
+    # 'yanchor': 'bottom',
+    # 'font': {
+    # 'size': 16,
+    # }, }
+    return gen_graph_image(plot_data, layout, fmt, 'inline',
                            width = width)
 
 
-def gen_plot_data_dict(x, y, error, color, idx = None):
+def gen_plot_data_dict(x, y, idx=None):
     trace = {
         "x": x,
         "y": y,
-        "error_y": {
-            "type": 'data',
-            "array": error,
-            "visible": True,
-            "color": 'rgb(100,50,50)'
-        },
         "type": 'scatter',
-        "mode": 'lines+markers',
+        "mode": 'markers',
         "marker": {
             "size": 4,
-            "cmin": 0,
-            "cmax": 1,
-            "colorscale": [
-                [0, 'rgb(55,128,256)'],
-                [1, 'rgb(256,128,55)']
-            ],
-            "color": color
-        },
-        "line": {
-            "color": 'rgba(55,128,191,.25)'
+            "color": 'rgb(55,128,256)'
         },
     }
 
@@ -196,11 +133,8 @@ def gen_subgraph_layout(data, titles, date_from, date_to):
         titles = [titles, ]
 
     script_path = os.path.realpath(os.path.dirname(__file__))
-    UAF_GI_LOGO_PATH = os.path.join(script_path, 'static/img/uaf_gi_logo.png')
-    uaf_gi_logo = Image.open(UAF_GI_LOGO_PATH)
-
-    AVO_LOGO_PATH = os.path.join(script_path, 'static/img/avo_logo.png')
-    avo_logo = Image.open(AVO_LOGO_PATH)
+    LOGO_PATH = os.path.join(script_path, 'static/img/logos.png')
+    logo = Image.open(LOGO_PATH)
 
     layout = {
         "paper_bgcolor": 'rgba(255,255,255,1)',
@@ -210,11 +144,11 @@ def gen_subgraph_layout(data, titles, date_from, date_to):
             "l": 50,
             "r": 25,
             "b": 25,
-            "t": 63,
+            "t": 80,
             "pad": 0
         },
         "grid": {
-            "rows": 3,
+            "rows": len(titles),
             "columns": 1,
             "pattern": 'independent',
             'ygap': 0.05,
@@ -222,7 +156,7 @@ def gen_subgraph_layout(data, titles, date_from, date_to):
         'font': {'size': 12},
         "images": [
             {
-                "source": uaf_gi_logo,
+                "source": logo,
                 "xref": "paper",
                 "yref": "paper",
                 "x": 1,
@@ -232,16 +166,7 @@ def gen_subgraph_layout(data, titles, date_from, date_to):
                 "xanchor": "right",
                 "yanchor": "bottom"
             },
-            {
-                "source": avo_logo,
-                "xref": "paper",
-                "x": .72,
-                "y": 1.008,
-                "sizex": .1062,
-                "sizey": .1062,
-                "xanchor": "right",
-                "yanchor": "bottom"
-            }],
+        ],
     }
 
     try:
@@ -257,22 +182,24 @@ def gen_subgraph_layout(data, titles, date_from, date_to):
         y_axis = f'yaxis{i}'
         x_axis = f'xaxis{i}'
 
-        layout[y_axis] = {"zeroline": False,
-                          'title': title,
-                          'gridcolor': 'rgba(0,0,0,.3)',
-                          'showline': True,
-                          'showgrid': False,
-                          'linecolor': 'rgba(0,0,0,.5)',
-                          'mirror': True,
-                          'ticks': "inside"}
+        layout[y_axis] = {
+            "zeroline": False,
+            'title': title,
+            'gridcolor': 'rgba(0,0,0,.3)',
+            'showline': True,
+            'showgrid': False,
+            'linecolor': 'rgba(0,0,0,.5)',
+            'mirror': True,
+            'ticks': "inside"
+        }
 
         layout[x_axis] = {
             'automargin': True,
             'autorange': False,
             'range': x_range,
             'type': 'date',
-            'tickformat': '%Y.%m.%d',
-            'hoverformat': '%m/%d/%Y',
+            'tickformat': '%m/%d/%y<br>%H:%M',
+            'hoverformat': '%m/%d/%Y %H:%M:%S',
             'gridcolor': 'rgba(0,0,0,.3)',
             'showline': True,
             'showgrid': False,
@@ -281,19 +208,15 @@ def gen_subgraph_layout(data, titles, date_from, date_to):
             'ticks': "inside"
         }
 
-        if i != len(titles):
+        if i != len(titles):  # All but the last one
             layout[x_axis]['matches'] = f'x{len(titles)}'
             layout[x_axis]['showticklabels'] = False
 
     return layout
 
 
-@app.route('/map/gen_graph', methods=["POST"])
+@app.route('/api/gen_graph', methods=["POST"])
 def gen_graph_from_web():
-    is_tilt = flask.request.form['is_tilt']
-    # Convert to a real boolean
-    is_tilt = True if is_tilt == 'true' or is_tilt == '1' else False
-
     data = json.loads(flask.request.form['data'])
     layout = json.loads(flask.request.form['layout'])
 
@@ -308,12 +231,12 @@ def gen_graph_from_web():
 
     # Shift the title over a bit
     layout['title']['x'] = .09
-    layout['title']['y'] = .92
+    # layout['title']['y'] = .92
 
-    return gen_graph_image(is_tilt, data, layout)
+    return gen_graph_image(data, layout)
 
 
-def gen_graph_image(is_tilt, data, layout, fmt = 'pdf', disposition = 'download',
+def gen_graph_image(data, layout, fmt = 'pdf', disposition = 'download',
                     width = 900):
 
     # Change plot types to scatter instead of scattergl. Bit slower, but works
@@ -323,18 +246,9 @@ def gen_graph_image(is_tilt, data, layout, fmt = 'pdf', disposition = 'download'
         if plot['type'].endswith('gl'):
             plot['type'] = plot['type'][:-2]
 
-        if 'marker' in plot and 'colorscale' in plot['marker']:
-            cs = plot['marker']['colorscale']
-            for entry in cs:
-                # The first parameter comes in as a string, but needs to be a
-                # number
-                entry[0] = float(entry[0])
-
     plot_title = layout['title']['text']
     plot_title = plot_title.replace(' ', '_')
     plot_title = plot_title.replace('/', '_')
-
-    gen_height = 800 if is_tilt else 700
 
     args = {'data': data,
             'layout': layout, }
@@ -347,8 +261,10 @@ def gen_graph_image(is_tilt, data, layout, fmt = 'pdf', disposition = 'download'
     #                     scale = 1.75)
 
     # Since we chose 600 for the "width" parameter of the to_image call
+    # Adjust the output size by using scale, rather than changing the
+    # width/height of the call. Seems to work better for layout.
     scale = min(width / 600, 22)
-    fig_bytes = fig.to_image(format = fmt, width = 600, height = gen_height,
+    fig_bytes = fig.to_image(format = fmt, width = 600, height = 800,
                              scale = scale)
     response = flask.make_response(fig_bytes)
     content_type = f'application/pdf' if fmt == 'pdf' else f'image/{fmt}'
@@ -576,10 +492,13 @@ def get_graph_data(as_json=True, station=None, channel = None,
     data = load_db_data(station, channel,
                         date_from=date_from,
                         date_to=date_to,
-                        factor = factor)
+                        factor=factor)
+
+    resp_data = {'factor': factor,
+                 'data': data}
 
     if as_json:
-        str_data = ujson.dumps(data)
+        str_data = ujson.dumps(resp_data)
         return flask.Response(response=str_data, status=200,
                               mimetype="application/json")
     else:

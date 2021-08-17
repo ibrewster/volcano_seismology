@@ -5,6 +5,7 @@ obspy
 pandas
 pymysql
 plotly
+kaleido
 pillow
 ujson
 python-dateutil

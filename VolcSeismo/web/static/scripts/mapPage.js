@@ -123,10 +123,17 @@ function generateGraphs() {
         'dateTo': dateTo
     }
 
-    Plotly.purge(dest.find('.graphArea')[0]);
+    var graphDiv=dest.find('.graphArea')
+    Plotly.purge(graphDiv[0]);
+    graphDiv.find('.noDataWarning').remove();
+    graphDiv.append('<div class="loadingMsg">Loading...<div class="loading"></div></div>');
 
-    $.get('get_graph_data', reqParams, function(data) {
+    $.get('get_graph_data', reqParams)
+    .done(function(data) {
         graphResults(data, dest);
+    })
+    .always(function(){
+        graphDiv.find('.loadingMsg').remove();
     });
 
 }
@@ -168,7 +175,7 @@ function setZoomRange(event, params) {
     dateFromInput.val(formattedFrom);
     dateToInput.val(formattedTo);
 
-    //setTitle(parentChart);
+    setTitle(parentChart);
     rescaleY(parentChart, dateFrom, dateTo);
 }
 
@@ -210,12 +217,13 @@ function setTitle(parentChart) {
     if (typeof(graphDiv.data) == 'undefined') {
         return; //no graph (yet, at least);
     }
-    var dateFrom = parentChart.find('input.dateFrom').val();
-    var dateTo = parentChart.find('input.dateTo').val();
+    var range=parseRangeDates(graphDiv.layout.xaxis.range)
+
+    var dateFrom = formatDateString(range[0]);
+    var dateTo = formatDateString(range[1]);
     var plot_title = parentChart.find('.chartTitle').text();
 
     plot_title += " - " + dateFrom + " to " + dateTo;
-    var y = .935;
 
     var filename = "Volcano Seismology ";
     filename += dateFrom.replace(/\//g, '-') + " to ";
@@ -224,15 +232,15 @@ function setTitle(parentChart) {
         'toImageButtonOptions': {
             'format': 'png',
             'filename': filename,
-            'height': 816,
-            'width': 700
+            'height': 800,
+            'width': 600
         }
     }
 
     var title_dict = {
         'text': plot_title,
-        'x': .08,
-        'y': y,
+        'x': .06,
+        'y': .935,
         'xanchor': 'left',
         'yanchor': 'bottom',
         'font': {
@@ -517,8 +525,6 @@ function download_view() {
 
 function saveCharts() {
     $('div.chart:visible .plotlyPlot:visible').each(function(idx, element) {
-        var div = $(element);
-
         var data = element.data;
         var layout = element.layout;
 
@@ -527,7 +533,7 @@ function saveCharts() {
             layout: layout
         }
 
-        dom_post('content/map/gen_graph', args)
+        dom_post('api/gen_graph', args)
     });
 }
 
@@ -535,10 +541,10 @@ function generateMapImage() {
     var mapBounds = map.getBounds().toJSON();
 
     console.log(mapBounds);
-    var params = getVectorParameters();
-    params['map_bounds'] = mapBounds;
+    var params = {};
+            params['map_bounds'] = mapBounds;
 
-    dom_post('content/map/download', params);
+    dom_post('map/download', params);
 }
 
 function plotGraph(div, data, layout, config) {
@@ -572,8 +578,10 @@ function plotGraph(div, data, layout, config) {
     rescaleY(div.closest('.chart'), date_from, date_to)
 }
 
-function graphResults(data, dest) {
+function graphResults(respData, dest) {
     //find the div for the east/west graph
+    var data=respData.data;
+    var factor=respData.factor;
     var graphDiv = dest.find('div.graphArea');
 
     var channelOpt = dest.find('.channelOption:checked')
@@ -582,6 +590,7 @@ function graphResults(data, dest) {
 
     graphDiv.data('minDate', data['info']['min_date']);
     graphDiv.data('maxDate', data['info']['max_date']);
+    graphDiv.data('factor',factor);
 
     if (data['dates'].length == 0) {
         //make sure there is no graph in this div
@@ -643,6 +652,7 @@ function graphResults(data, dest) {
     else {
         setGraphRange.call(dateFrom[0]);
     }
+    setTitle(dest);
 }
 
 function makePlotDataDict(x, y, idx) {
