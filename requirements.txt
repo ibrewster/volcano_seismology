@@ -11,3 +11,4 @@ ujson
 python-dateutil
 pytz
 requests
+pygmt

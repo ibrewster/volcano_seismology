@@ -287,107 +287,36 @@ def gen_map_image():
         os.environ['GMT_LIBRARY_PATH'] = '/usr/local/lib'
         import pygmt
 
-    vector_args = {}
-    for arg in ['baseline', 'date_from', 'date_to', 'scale', 'station',
-                'zoom', 'quakes']:
-        vector_args[arg] = flask.request.form[arg]
-
     map_bounds = json.loads(flask.request.form['map_bounds'])
     bounds = [map_bounds['west'],
               map_bounds['east'],
               map_bounds['south'],
               map_bounds['north']]
-    date_from = parse(vector_args['date_from']).date()
-    date_to = parse(vector_args['date_to']).date()
 
     fig = pygmt.Figure()
     fig.basemap(projection="M16i", region=bounds, frame=('WeSn', 'afg'))
 
-    parent_dir = os.path.dirname(__file__)
-    grid = os.path.join(parent_dir, "alaska_2s.grd")
+    if bounds[3] > 60:
+        parent_dir = os.path.dirname(__file__)
+        grid = os.path.join(parent_dir, "alaska_2s.grd")
+    else:
+        grid = '@srtm_relief_01s'
 
-    fig.grdimage(grid, C = 'geo', E = 300, I = True, M = True)
-    fig.coast(I = 'r/2p,#FFFFFF', water = "#FFFFFF", resolution = "f")
+    fig.grdimage(grid, C = 'geo', dpi = 600, shading = True, monochrome = True)
+    fig.coast(rivers = 'r/2p,#FFFFFF', water = "#FFFFFF", resolution = "f")
 
-    # Plot the earthquakes (if any)
-    quake_data = json.loads(vector_args['quakes'])
-    quake_df = pd.DataFrame.from_dict(quake_data)
-
-    if quake_df.size > 0:
-        quake_df['x'] = quake_df.apply(lambda x: x.location['lng'], axis = 1)
-        quake_df['y'] = quake_df.apply(lambda x: x.location['lat'], axis = 1)
-        quake_df['sizes'] = quake_df.apply(lambda x: .25 * math.exp(0.5 * x.magnitude),
-                                           axis = 1)
-
-        fig.plot(x = quake_df.x, y = quake_df.y,
-                 sizes = quake_df.sizes,
-                 style = "cc", color = "white", pen = "black")
-
-    # Plot the vectors
-    vector_data = _get_vector_data(vector_args['station'],
-                                   vector_args['baseline'], date_from,
-                                   date_to, int(vector_args['zoom']),
-                                   int(vector_args['scale']))
-
-    xy_vectors = pd.DataFrame.from_dict([{'x': numpy.array((x[0]['lng'], x[1]['lng']),
-                                                           dtype = numpy.float32),
-                                          'y': numpy.array((x[0]['lat'], x[1]['lat']),
-                                                           dtype = numpy.float32),
-                                          }
-                                         for x in vector_data['xy']
-                                         ])
-    z_vectors = pd.DataFrame.from_dict([{'x': numpy.array((x[0]['lng'], x[1]['lng']),
-                                                          dtype = numpy.float32),
-                                         'y': numpy.array((x[0]['lat'], x[1]['lat']),
-                                                          dtype = numpy.float32),
-                                         }
-                                        for x in vector_data['z']
-                                        ])
-
-    for idx, row in xy_vectors.iterrows():
-        fig.plot(x = row.x, y = row.y, pen = '2.5p,51/0/255+ve0.12i+g51/0/255+a50')
-
-    for idx, row in z_vectors.iterrows():
-        fig.plot(x = row.x, y = row.y, pen = '2.5p,"#0CDA3B')
+    if not stations:
+        stations.fetch()
 
     station_data = pd.DataFrame.from_dict(stations, orient = "index")
 
-    # Figure out circle color and pen color
-    station_data['color'] = station_data.apply(lambda row: 0 if row.type == "continuous" else 1,
-                                               axis = 1)
-
-    # Split the data frame into two so we can vary the pen color
-    # seperately from the fill color
-    sdata_red = station_data[station_data.has_tilt]
-    sdata_white = station_data[~station_data.has_tilt]
-    fig.plot(x = sdata_red.lng, y = sdata_red.lat, style = "c0.5i",
-             color = sdata_red.color, cmap = "73/0/244,12/218/59",
-             pen = '2p,red')
-
-    fig.plot(x = sdata_white.lng, y = sdata_white.lat, style = "c0.5i",
-             color = sdata_white.color, cmap = "73/0/244,12/218/59",
+    fig.plot(x = station_data.lng, y = station_data.lat,
+             style = "c0.5i",
+             color = '73/0/244',
              pen = '2p,white')
 
     fig.text(x = station_data.lng, y = station_data.lat,
              text = station_data.index.tolist(), font = "12p,Helvetica-Bold,white")
-
-    scale_params = _get_scale_parameters(vector_data['scale'], bounds)
-
-    # Plot the scale bar background
-    fig.plot(data = numpy.array([scale_params['background']]), style = 'r+s',
-             G = "white@75")
-
-    # And the scale bar itself
-    fig.plot(x = scale_params['x'], y = scale_params['y'],
-             pen = '2.5p,51/0/255+ve0.12i+g51/0/255+a50')
-
-    # some labels
-    date_range = f"{date_from.strftime('%m/%d/%y')}-{date_to.strftime('%m/%d/%y')}"
-    fig.text(x = scale_params['x'][0], y = scale_params['dt'],
-             text = date_range, font = "14p,Helvetica", justify = "TL")
-
-    fig.text(x = scale_params['x'][0], y = scale_params['text'],
-             text = '1cm/year', font = "14p,Helvetica", justify = "TL")
 
     #   fig.show(method = "external")
     save_file = f'{uuid.uuid4().hex}.pdf'

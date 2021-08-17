@@ -539,10 +539,9 @@ function saveCharts() {
 
 function generateMapImage() {
     var mapBounds = map.getBounds().toJSON();
-
-    console.log(mapBounds);
-    var params = {};
-            params['map_bounds'] = mapBounds;
+    var params = {
+        'map_bounds':mapBounds,
+    };
 
     dom_post('map/download', params);
 }

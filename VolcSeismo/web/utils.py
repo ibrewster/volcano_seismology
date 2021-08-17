@@ -66,5 +66,9 @@ class FetchingDict(dict):
             self.update(load_stations(10))
         return super().__getitem__(key)
 
+    def fetch(self, age = 10):
+        self.clear()
+        self.update(load_stations(age))
+
 
 stations = FetchingDict()
