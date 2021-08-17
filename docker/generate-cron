@@ -1,1 +1,1 @@
-3-59/10 * * * * root python3 /code/processSeismoData.py > /var/log/volcseismo/process.log 2>&1
+3-59/10 * * * * root python3 -u /code/processSeismoData.py > /var/log/volcseismo/process.log 2>&1

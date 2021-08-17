@@ -9,7 +9,6 @@ WORKDIR /code
 RUN apt-get update && apt-get -y upgrade && apt-get -y install git cron nano python3 python3-pip libgdal-dev fftw3-dev r-base
 RUN git clone --recurse-submodules https://github.com/ibrewster/volcano_seismology.git .
 RUN Rscript docker/install_r_packages.R
-RUN pip3 install uwsgi
 ADD http://worldtimeapi.org/api/ip.txt /tmp/bustcache
 RUN git pull
 RUN python3 setup.py -y
@@ -19,6 +18,5 @@ COPY docker/generate-cron /etc/cron.d/generate-cron
 RUN chmod 0644 /etc/cron.d/generate-cron
 RUN crontab /etc/cron.d/generate-cron
 RUN touch /var/log/cron.log
-RUN touch /var/log/volcseismo/error.log && chmod 777 /var/log/volcseismo/error.log
-RUN mkdir VolcSeismo/.plotly && chown daemon VolcSeismo/.plotly && chmod 777 VolcSeismo/.plotly
-CMD cron && uwsgi -i ./VolcSeismo/web/volcseismo.ini && tail -f /var/log/volcseismo/error.log
+RUN touch /var/log/volcseismo/process.log && chmod 777 /var/log/volcseismo/process.log
+CMD cron && tail -f /var/log/volcseismo/process.log
