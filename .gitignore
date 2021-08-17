@@ -1,3 +1,4 @@
+pyvenv.cfg
 cache
 Dockerfile.local
 config.ini
