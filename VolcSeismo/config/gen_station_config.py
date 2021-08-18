@@ -73,7 +73,7 @@ VOLCS = {
     'Semisopochnoi': {},
     'Little Sitkin': {},
     'Kantishna': {'latitude': 63.4000, 'longitude': -151.2000, 'radius': 160},
-    'Susitna': {'latitude': 62.8295, 'longitude': -148.5509, 'radius': 160},
+    'Susitna': {'latitude': 62.8295, 'longitude': -148.5509, 'radius': 160, 'zoom': 8},
     'PrinceWmSn': {'latitude': 61.0400, 'longitude': -147.7300, 'radius': 160}
 }
 
@@ -211,10 +211,12 @@ def generate_stations():
         lat1 = info['latitude']
         lon1 = info['longitude']
         sort_lon = lon1 if lon1 < 0 else lon1 - 360
+        zoom = info.get('zoom', 10)
         locations[volc] = {
             'sort': sort_lon,
             'latitude': lat1,
             'longitude': lon1,
+            'zoom': zoom,
             'stations': [],
         }
 
