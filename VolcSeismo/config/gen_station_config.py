@@ -61,7 +61,7 @@ VOLCS = {
     'Dutton': {},
     'Shishaldin': {},
     'Westdahl': {},
-    'Akutan': {},
+    'Akutan': {'zoom': 12},
     'Makushin': {},
     'Okmok': {},
     'Cleveland': {},
