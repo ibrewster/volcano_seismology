@@ -5,7 +5,7 @@
             <select id="volcSelect">
 		    {% for loc in volcOrder %}
 		    {% set data=locations[loc] %}
-		        <option data-lat={{data[ 'latitude']}} data-lon={{data[ 'longitude']}} data-zoom={{data[ 'zoom']}}
+		        <option data-lat='{{data["latitude"]}}' data-lon="{{data[ 'longitude']}}" data-zoom="{{data[ 'zoom']}}"
 		    data-site='{{loc | replace(' ',' ')}}'>
 		    {{loc}}
 		</option>
