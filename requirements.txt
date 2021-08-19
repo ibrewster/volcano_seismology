@@ -12,3 +12,5 @@ python-dateutil
 pytz
 requests
 pygmt
+flask-compress
+flask-session

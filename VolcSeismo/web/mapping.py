@@ -7,7 +7,7 @@ import uuid
 from datetime import datetime, timedelta, timezone
 from io import StringIO
 
-from . import app
+from . import app, compressor
 from . import utils
 from .utils import stations
 
@@ -20,9 +20,10 @@ import flask
 import flask.helpers
 
 from dateutil.parser import parse
+from PIL import Image
+
 import pandas as pd
 import plotly.graph_objects as go
-from PIL import Image
 
 
 def volc_sort_key(volc):
@@ -51,6 +52,7 @@ def genStationColors(row):
 
 
 @app.route('/gen_graph', methods = ["GET"])
+@compressor.compressed()
 def get_graph_image():
     try:
         date_from = parse(flask.request.args.get('dfrom'))
@@ -217,6 +219,7 @@ def gen_subgraph_layout(data, titles, date_from, date_to):
 
 
 @app.route('/api/gen_graph', methods=["POST"])
+@compressor.compressed()
 def gen_graph_from_web():
     print("API gen_graph request received")
     data = json.loads(flask.request.form['data'])
@@ -298,6 +301,7 @@ def gen_graph_image(data, layout, fmt = 'pdf', disposition = 'download',
 
 
 @app.route('/map/download', methods=["POST"])
+@compressor.compressed()
 def gen_map_image():
     # has to be imported at time of use to work with uwsgi
     try:
@@ -396,6 +400,7 @@ def list_stations():
 
 
 @app.route('/get_full_data')
+@compressor.compressed()
 def get_full_data():
     station = flask.request.args['station']
     channel = flask.request.args['channel']
@@ -430,6 +435,7 @@ def get_full_data():
 
 
 @app.route('/get_graph_data')
+@compressor.compressed()
 def get_graph_data(as_json=True, station=None, channel = None,
                    date_from=None, date_to=None, factor = "auto"):
 
@@ -560,10 +566,9 @@ FROM
             SQL += " AND datetime<=%s"
             args.append(date_to)
 
-        if factor != 100:
-            print("Running query with factor", factor)
-            postfix = f" AND epoch%%{PERCENT_LOOKUP.get(factor,'1=0')}"
-            SQL += postfix
+        print("Running query with factor", factor)
+        postfix = f" AND epoch%%{PERCENT_LOOKUP.get(factor,'1=0')}"
+        SQL += postfix
 
         SQL += """
         ORDER BY datetime
