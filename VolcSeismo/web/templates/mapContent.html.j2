@@ -6,12 +6,12 @@
 		    {% for loc in volcOrder %}
 		    {% set data=locations[loc] %}
 		        <option data-lat='{{data["latitude"]}}' data-lon="{{data[ 'longitude']}}" data-zoom="{{data[ 'zoom']}}"
-		    data-site='{{loc | replace(' ',' ')}}'>
-		    {{loc}}
-		</option>
-		{%endfor%}
-	    </select>
-            <button id="download">Download</button>
+		    data-site="{{loc | replace(' ',' ')}}">
+                    {{loc}}
+                </option>
+            {%endfor%}
+            </select>
+            <button id="download">Download Images</button>
         </div>
         <div id=locsRight class="locsDiv">
         </div>

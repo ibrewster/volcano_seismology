@@ -21,6 +21,7 @@ $(document).ready(function() {
     $(document).on('click', 'img.closeBtn', closeGraph);
     $(document).on('click', 'span.dateBtns button', dateRangeClicked);
     $(document).on('click', 'input.channelOption', generateGraphs);
+    $(document).on('click', 'button.downloadData', downloadData);
     $('img.menu').click(showMenu);
 
     $(document).on('change', 'div.chartHeader input.date', changeDateRangeInput);
@@ -34,6 +35,28 @@ $(document).ready(function() {
     initMap();
     initFinal();
 })
+
+function downloadData() {
+    //context should be a button in a graph div header.
+    var chartDiv = $(this).closest('div.chart')
+    var graphDiv = chartDiv.find("div.plotlyPlot")[0];
+    //get date range displayed
+    var x_range = graphDiv.layout.xaxis.range;
+    //get station and channel
+    var chanInfo = chartDiv.find('.channelOption:checked').data();
+
+    var args = {
+        'factor': 100,
+        'dateFrom': x_range[0],
+        'dateTo': x_range[1],
+    }
+
+    Object.assign(args, chanInfo);
+
+    var params = $.param(args);
+    var url = 'get_full_data?' + params;
+    window.location.href = url;
+}
 
 function initMap() {
     map = new google.maps.Map(document.getElementById('map'), {
@@ -123,18 +146,18 @@ function generateGraphs() {
         'dateTo': dateTo
     }
 
-    var graphDiv=dest.find('.graphArea')
+    var graphDiv = dest.find('.graphArea')
     Plotly.purge(graphDiv[0]);
     graphDiv.find('.noDataWarning').remove();
     graphDiv.append('<div class="loadingMsg">Loading...<div class="loading"></div></div>');
 
     $.get('get_graph_data', reqParams)
-    .done(function(data) {
-        graphResults(data, dest);
-    })
-    .always(function(){
-        graphDiv.find('.loadingMsg').remove();
-    });
+        .done(function(data) {
+            graphResults(data, dest);
+        })
+        .always(function() {
+            graphDiv.find('.loadingMsg').remove();
+        });
 
 }
 
@@ -217,7 +240,7 @@ function setTitle(parentChart) {
     if (typeof(graphDiv.data) == 'undefined') {
         return; //no graph (yet, at least);
     }
-    var range=parseRangeDates(graphDiv.layout.xaxis.range)
+    var range = parseRangeDates(graphDiv.layout.xaxis.range)
 
     var dateFrom = formatDateString(range[0]);
     var dateTo = formatDateString(range[1]);
@@ -449,6 +472,9 @@ function createChartHeader(station, site) {
     //close button
     chartHeader.append("<img src='static/img/RedClose.svg' class='closeBtn noPrint'/>")
 
+    //download button
+    chartHeader.append("<button class='downloadData'>Download Data</button>");
+
     //channel selector title
     var channelSelector = $('<div class="channelSel">');
     var radioButtons = $("<div class='inlineblock channelbuttons'>");
@@ -518,7 +544,7 @@ function createChartDiv(station, site) {
 }
 
 function download_view() {
-    showMessage("PDF Generation Requested.<br>Requested file(s) will download once ready. Please wait...")
+    showMessage("PDF Generation Requested.<br>Requested file(s) will download once ready.<br>This may take up to five minutes. Please wait...")
     generateMapImage();
     saveCharts();
 }
@@ -540,7 +566,7 @@ function saveCharts() {
 function generateMapImage() {
     var mapBounds = map.getBounds().toJSON();
     var params = {
-        'map_bounds':mapBounds,
+        'map_bounds': mapBounds,
     };
 
     dom_post('map/download', params);
@@ -549,13 +575,11 @@ function generateMapImage() {
 function plotGraph(div, data, layout, config) {
     if (typeof(data) == 'undefined') {
         //nothing provided. Load it from the specified div
-        data = div.data('graph_data');
-        layout = div.data('graph_layout');
+        data = div[0].data;
+        layout = div[0].layout;
         config = div.data('graph_config');
     } else {
         //values provided. Save them to the specified div
-        div.data('graph_data', data)
-        div.data('graph_layout', layout)
         div.data('graph_config', config)
     }
 
@@ -579,8 +603,8 @@ function plotGraph(div, data, layout, config) {
 
 function graphResults(respData, dest) {
     //find the div for the east/west graph
-    var data=respData.data;
-    var factor=respData.factor;
+    var data = respData.data;
+    var factor = respData.factor;
     var graphDiv = dest.find('div.graphArea');
 
     var channelOpt = dest.find('.channelOption:checked')
@@ -589,7 +613,7 @@ function graphResults(respData, dest) {
 
     graphDiv.data('minDate', data['info']['min_date']);
     graphDiv.data('maxDate', data['info']['max_date']);
-    graphDiv.data('factor',factor);
+    graphDiv.data('factor', factor);
 
     if (data['dates'].length == 0) {
         //make sure there is no graph in this div
@@ -702,19 +726,17 @@ function generateSubgraphLayout(data, titles) {
             'ygap': 0.05,
         },
         'font': { 'size': 12 },
-        "images": [
-            {
-                "source": `${img_path}/logos.png`,
-                "xref": "paper",
-                "yref": "paper",
-                "x": 1,
-                "y": 1.008,
-                "sizex": .3762,
-                "sizey": .27,
-                "xanchor": "right",
-                "yanchor": "bottom"
-            }
-        ],
+        "images": [{
+            "source": `${img_path}/logos.png`,
+            "xref": "paper",
+            "yref": "paper",
+            "x": 1,
+            "y": 1.008,
+            "sizex": .3762,
+            "sizey": .27,
+            "xanchor": "right",
+            "yanchor": "bottom"
+        }],
     }
 
 

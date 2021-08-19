@@ -1,9 +1,11 @@
+import csv
 import os
 import time
 import json
 import uuid
 
 from datetime import datetime, timedelta, timezone
+from io import StringIO
 
 from . import app
 from . import utils
@@ -259,6 +261,11 @@ def gen_graph_image(data, layout, fmt = 'pdf', disposition = 'download',
             'layout': layout, }
 
     print("Creating Figure")
+
+    import pickle
+    with open('/tmp/createData.pickle', 'wb') as file:
+        pickle.dump(args, file)
+
     fig = go.Figure(args)
     print("Figure Created. Getting Bytes")
 
@@ -386,6 +393,40 @@ def list_stations():
 
     stns = utils.load_stations(max_age)
     return flask.jsonify(stns)
+
+
+@app.route('/get_full_data')
+def get_full_data():
+    station = flask.request.args['station']
+    channel = flask.request.args['channel']
+    date_from = flask.request.args.get('dateFrom')
+    date_to = flask.request.args.get('dateTo')
+    filename = f"{station}-{channel}-{date_from}-{date_to}.csv"
+
+    data = get_graph_data(False)
+    # format as a CSV
+
+    del data['info']
+
+    header = []
+    csv_data = []
+    for col, val in data.items():
+        csv_data.append(val)
+        if col == "dates":
+            col = "date"
+        header.append(col)
+
+    csv_data = numpy.asarray(csv_data).T
+
+    csv_file = StringIO()
+    csv_writer = csv.writer(csv_file)
+    csv_writer.writerow(header)
+    csv_writer.writerows(csv_data)
+
+    output = flask.make_response(csv_file.getvalue())
+    output.headers["Content-Disposition"] = f"attachment; filename={filename}"
+    output.headers["Content-type"] = "text/csv"
+    return output
 
 
 @app.route('/get_graph_data')

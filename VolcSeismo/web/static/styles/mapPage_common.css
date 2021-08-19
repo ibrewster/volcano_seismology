@@ -484,12 +484,12 @@ span.siteType.campaign {
     box-sizing: border-box;
 }
 
-.loadingMsg{
-    display:inline-block;
-    position:relative;
-    font-weight:bold;
-    height:1.5em;
-    line-height:1.5em;
+.loadingMsg {
+    display: inline-block;
+    position: relative;
+    font-weight: bold;
+    height: 1.5em;
+    line-height: 1.5em;
     font-size: 125%;
 }
 
@@ -571,6 +571,12 @@ img.menu {
     width: 20px;
     height: 20px;
     cursor: pointer;
+}
+
+button.downloadData {
+    position: absolute;
+    top: 5px;
+    left: 5px;
 }
 
 @media only screen and (max-width: 800px) {
