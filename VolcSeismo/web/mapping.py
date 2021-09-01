@@ -302,7 +302,7 @@ def gen_map_image():
     else:
         grid = '@srtm_relief_01s'
 
-    fig.grdimage(grid, C = 'geo', dpi = 600, shading = True, monochrome = True)
+    fig.grdimage(grid, cmap = 'geo', dpi = 600, shading = True, monochrome = True)
     fig.coast(rivers = 'r/2p,#FFFFFF', water = "#FFFFFF", resolution = "f")
 
     if not stations:
