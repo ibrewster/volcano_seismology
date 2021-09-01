@@ -1,12 +1,13 @@
+import csv
 import os
-import math
 import time
 import json
 import uuid
 
 from datetime import datetime, timedelta, timezone
+from io import StringIO
 
-from . import app
+from . import app, compressor
 from . import utils
 from .utils import stations
 
@@ -19,9 +20,10 @@ import flask
 import flask.helpers
 
 from dateutil.parser import parse
+from PIL import Image
+
 import pandas as pd
 import plotly.graph_objects as go
-from PIL import Image
 
 
 def volc_sort_key(volc):
@@ -50,6 +52,7 @@ def genStationColors(row):
 
 
 @app.route('/gen_graph', methods = ["GET"])
+@compressor.compressed()
 def get_graph_image():
     try:
         date_from = parse(flask.request.args.get('dfrom'))
@@ -216,9 +219,13 @@ def gen_subgraph_layout(data, titles, date_from, date_to):
 
 
 @app.route('/api/gen_graph', methods=["POST"])
+@compressor.compressed()
 def gen_graph_from_web():
+    print("API gen_graph request received")
     data = json.loads(flask.request.form['data'])
+    print("Pulled data from request")
     layout = json.loads(flask.request.form['layout'])
+    print("Pulled layout from request")
 
     # Fix up images in layout (using a URL doesn't seem to work in my testing)
     static_path = os.path.join(app.static_folder, 'img')
@@ -226,26 +233,29 @@ def gen_graph_from_web():
     for img in layout['images']:
         img_name = img['source'].split('/')[-1]
         img_path = os.path.join(static_path, img_name)
+        print("Image set with path:", img_path)
         img_file = Image.open(img_path)
         img['source'] = img_file
 
     # Shift the title over a bit
     layout['title']['x'] = .09
-    # layout['title']['y'] = .92
-
+    layout['title']['y'] = .95
+    print("Calling gen_graph_image")
     return gen_graph_image(data, layout)
 
 
 def gen_graph_image(data, layout, fmt = 'pdf', disposition = 'download',
-                    width = 900):
+                    width = 768):
 
     # Change plot types to scatter instead of scattergl. Bit slower, but works
     # properly with PDF output
+    print("Fixing up data")
     for plot in data:
         # We want regular plots so they come out good
         if plot['type'].endswith('gl'):
             plot['type'] = plot['type'][:-2]
 
+    print("Fixing up plot title")
     plot_title = layout['title']['text']
     plot_title = plot_title.replace(' ', '_')
     plot_title = plot_title.replace('/', '_')
@@ -253,7 +263,14 @@ def gen_graph_image(data, layout, fmt = 'pdf', disposition = 'download',
     args = {'data': data,
             'layout': layout, }
 
+    print("Creating Figure")
+
+    import pickle
+    with open('/tmp/createData.pickle', 'wb') as file:
+        pickle.dump(args, file)
+
     fig = go.Figure(args)
+    print("Figure Created. Getting Bytes")
 
     # TEMPORARY DEBUG
     #    filename = f"{uuid.uuid4().hex}.pdf"
@@ -263,22 +280,28 @@ def gen_graph_image(data, layout, fmt = 'pdf', disposition = 'download',
     # Since we chose 600 for the "width" parameter of the to_image call
     # Adjust the output size by using scale, rather than changing the
     # width/height of the call. Seems to work better for layout.
-    scale = min(width / 600, 22)
-    fig_bytes = fig.to_image(format = fmt, width = 600, height = 800,
+    scale = min(width / 750, 22)
+    t1 = time.time()
+    fig_bytes = fig.to_image(format = fmt, width = 750, height = 1000,
                              scale = scale)
+    print("Called fig.to_image in", time.time() - t1)
+    print("Bytes created")
     response = flask.make_response(fig_bytes)
+    print("Response created from bytes")
+
     content_type = f'application/pdf' if fmt == 'pdf' else f'image/{fmt}'
     response.headers.set('Content-Type', content_type)
     if disposition == 'download':
         response.headers.set('Content-Disposition', 'attachment',
-                             filename = f"{plot_title}.pdf")
+                             filename = f"{plot_title}.{fmt}")
     else:
         response.headers.set('Content-Disposition', 'inline')
-
+    print("Returning Response")
     return response
 
 
 @app.route('/map/download', methods=["POST"])
+@compressor.compressed()
 def gen_map_image():
     # has to be imported at time of use to work with uwsgi
     try:
@@ -294,7 +317,7 @@ def gen_map_image():
               map_bounds['north']]
 
     fig = pygmt.Figure()
-    fig.basemap(projection="M16i", region=bounds, frame=('WeSn', 'afg'))
+    fig.basemap(projection="M10i", region=bounds, frame=('WeSn', 'afg'))
 
     if bounds[3] > 60:
         parent_dir = os.path.dirname(__file__)
@@ -376,7 +399,43 @@ def list_stations():
     return flask.jsonify(stns)
 
 
+@app.route('/get_full_data')
+@compressor.compressed()
+def get_full_data():
+    station = flask.request.args['station']
+    channel = flask.request.args['channel']
+    date_from = flask.request.args.get('dateFrom')
+    date_to = flask.request.args.get('dateTo')
+    filename = f"{station}-{channel}-{date_from}-{date_to}.csv"
+
+    data = get_graph_data(False)
+    # format as a CSV
+
+    del data['info']
+
+    header = []
+    csv_data = []
+    for col, val in data.items():
+        csv_data.append(val)
+        if col == "dates":
+            col = "date"
+        header.append(col)
+
+    csv_data = numpy.asarray(csv_data).T
+
+    csv_file = StringIO()
+    csv_writer = csv.writer(csv_file)
+    csv_writer.writerow(header)
+    csv_writer.writerows(csv_data)
+
+    output = flask.make_response(csv_file.getvalue())
+    output.headers["Content-Disposition"] = f"attachment; filename={filename}"
+    output.headers["Content-type"] = "text/csv"
+    return output
+
+
 @app.route('/get_graph_data')
+@compressor.compressed()
 def get_graph_data(as_json=True, station=None, channel = None,
                    date_from=None, date_to=None, factor = "auto"):
 
@@ -507,10 +566,9 @@ FROM
             SQL += " AND datetime<=%s"
             args.append(date_to)
 
-        if factor != 100:
-            print("Running query with factor", factor)
-            postfix = f" AND epoch%%{PERCENT_LOOKUP.get(factor,'1=0')}"
-            SQL += postfix
+        print("Running query with factor", factor)
+        postfix = f" AND epoch%%{PERCENT_LOOKUP.get(factor,'1=0')}"
+        SQL += postfix
 
         SQL += """
         ORDER BY datetime

@@ -2,8 +2,13 @@ import flask
 import json
 import os
 
+from flask_compress import Compress
+
 app = flask.Flask(__name__)
 app.secret_key = 'Correct Horse Battery Staple Secret Key Code'
+app.config["COMPRESS_REGISTER"] = False
+compressor = Compress()
+compressor.init_app(app)
 
 # Make sure the home directory is set to a reasonable location (i.e. NOT /root)
 if os.environ.get('HOME', '/root').startswith('/root'):
