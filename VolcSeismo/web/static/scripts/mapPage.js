@@ -534,8 +534,6 @@ function createChartDiv(station, site) {
     Legend:\
     <p>Freq Max10: Median frequency of the ten frequency peaks with higher amplitude.</p>\
     <p>SD Freq Max10: Standard deviation of the frequency (for the ten frequency peaks with higher amplitude).</p>\
-    <p>SSA Max10: Median amplitude of the ten frequency peaks with higher amplitude.</p>\
-    <p>SD SSA Max10: Standard deviation of the amplitude (for the ten frequency peaks with higher amplitude).</p>\
     </div>';
     graph_wrapper.append(legend_html);
     chartDiv.append(graph_wrapper);
@@ -630,13 +628,13 @@ function graphResults(respData, dest) {
 
     var freq_max10 = makePlotDataDict(data['dates'], data['freq_max10'])
     var sd_freq_max10 = makePlotDataDict(data['dates'], data['sd_freq_max10'], 2)
-    var ssa_max10 = makePlotDataDict(data['dates'], data['ssa_max10'], 3)
-    var sd_ssa_max10 = makePlotDataDict(data['dates'], data['sd_ssa_max10'], 4)
+    var rsam = makePlotDataDict(data['dates'], data['rsam'], 3)
+    var sd_rsam = makePlotDataDict(data['dates'], data['sd_rsam'], 4)
 
-    var graph_data = [freq_max10, sd_freq_max10, ssa_max10, sd_ssa_max10]
+    var graph_data = [freq_max10, sd_freq_max10, rsam, sd_rsam]
     var layout = generateSubgraphLayout(graph_data, [
         'Freq Max10 (Hz)', 'SD Freq Max10 (Hz)',
-        'SSA Max10 (counts)', 'SD SSA Max10 (counts)'
+        'RSAM', 'SD RSAM'
     ]);
 
     var annotation = [{
@@ -685,7 +683,7 @@ function makePlotDataDict(x, y, idx) {
         type: 'scattergl',
         mode: 'markers',
         marker: {
-            size: 4,
+            size: 2,
             color: 'rgb(55,128,256)'
         },
     }

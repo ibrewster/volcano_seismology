@@ -78,14 +78,14 @@ def get_graph_image():
 
     freq_max = gen_plot_data_dict(data['dates'], data['freq_max10'])
     sd_freq_max = gen_plot_data_dict(data['dates'], data['sd_freq_max10'], 2)
-    ssa_max = gen_plot_data_dict(data['dates'], data['ssa_max10'], 3)
-    sd_ssa_max = gen_plot_data_dict(data['dates'], data['sd_ssa_max10'], 4)
+    rsam = gen_plot_data_dict(data['dates'], data['rsam'], 3)
+    sd_rsam = gen_plot_data_dict(data['dates'], data['sd_rsam'], 4)
 
-    plot_data = [freq_max, sd_freq_max, ssa_max, sd_ssa_max]
+    plot_data = [freq_max, sd_freq_max, rsam, sd_rsam]
 
     layout = gen_subgraph_layout(plot_data,
                                  ['Freq Max10 (Hz)', 'SD Freq Max10 (Hz)',
-                                  'SSA Max10 (counts)', 'SD SSA Max10 (counts)'],
+                                  'RSAM (counts)', 'SD RSAM (counts)'],
                                  date_from, date_to)
     layout['annotations'] = [{
         "xref": 'paper',
@@ -119,7 +119,7 @@ def gen_plot_data_dict(x, y, idx=None):
         "type": 'scatter',
         "mode": 'markers',
         "marker": {
-            "size": 4,
+            "size": 2,
             "color": 'rgb(55,128,256)'
         },
     }
@@ -509,8 +509,8 @@ def load_db_data(station, channel,
     graph_data = {
         'freq_max10': [],
         'sd_freq_max10': [],
-        'ssa_max10': [],
-        'sd_ssa_max10': [],
+        'rsam': [],
+        'sd_rsam': [],
         'dates': [],
         'info': {
 
@@ -522,8 +522,8 @@ def load_db_data(station, channel,
         to_char(datetime AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS"Z"') as text_date,
         freq_max10,
         sd_freq_max10,
-        ssa_max10,
-        sd_ssa_max10
+        rsam,
+        sd_rsam
     FROM
         data
     WHERE station=%s
@@ -575,7 +575,7 @@ FROM
         """
 
         SQL_HEADER = ('dates', 'freq_max10', 'sd_freq_max10',
-                      'ssa_max10', 'sd_ssa_max10')
+                      'rsam', 'sd_rsam')
 
         t1 = time.time()
         cursor.execute(SQL, args)
