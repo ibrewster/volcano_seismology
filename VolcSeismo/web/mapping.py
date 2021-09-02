@@ -79,13 +79,12 @@ def get_graph_image():
     freq_max = gen_plot_data_dict(data['dates'], data['freq_max10'])
     sd_freq_max = gen_plot_data_dict(data['dates'], data['sd_freq_max10'], 2)
     rsam = gen_plot_data_dict(data['dates'], data['rsam'], 3)
-    sd_rsam = gen_plot_data_dict(data['dates'], data['sd_rsam'], 4)
 
-    plot_data = [freq_max, sd_freq_max, rsam, sd_rsam]
+    plot_data = [freq_max, sd_freq_max, rsam]
 
     layout = gen_subgraph_layout(plot_data,
                                  ['Freq Max10 (Hz)', 'SD Freq Max10 (Hz)',
-                                  'RSAM (counts)', 'SD RSAM (counts)'],
+                                  'RSAM (counts)'],
                                  date_from, date_to)
     layout['annotations'] = [{
         "xref": 'paper',
@@ -510,7 +509,6 @@ def load_db_data(station, channel,
         'freq_max10': [],
         'sd_freq_max10': [],
         'rsam': [],
-        'sd_rsam': [],
         'dates': [],
         'info': {
 
@@ -522,8 +520,7 @@ def load_db_data(station, channel,
         to_char(datetime AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS"Z"') as text_date,
         freq_max10,
         sd_freq_max10,
-        rsam,
-        sd_rsam
+        rsam
     FROM
         data
     WHERE station=%s
@@ -575,7 +572,7 @@ FROM
         """
 
         SQL_HEADER = ('dates', 'freq_max10', 'sd_freq_max10',
-                      'rsam', 'sd_rsam')
+                      'rsam')
 
         t1 = time.time()
         cursor.execute(SQL, args)

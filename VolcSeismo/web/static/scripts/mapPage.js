@@ -629,12 +629,10 @@ function graphResults(respData, dest) {
     var freq_max10 = makePlotDataDict(data['dates'], data['freq_max10'])
     var sd_freq_max10 = makePlotDataDict(data['dates'], data['sd_freq_max10'], 2)
     var rsam = makePlotDataDict(data['dates'], data['rsam'], 3)
-    var sd_rsam = makePlotDataDict(data['dates'], data['sd_rsam'], 4)
 
-    var graph_data = [freq_max10, sd_freq_max10, rsam, sd_rsam]
+    var graph_data = [freq_max10, sd_freq_max10, rsam]
     var layout = generateSubgraphLayout(graph_data, [
-        'Freq Max10 (Hz)', 'SD Freq Max10 (Hz)',
-        'RSAM', 'SD RSAM'
+        'Freq Max10 (Hz)', 'SD Freq Max10 (Hz)', 'RSAM'
     ]);
 
     var annotation = [{
