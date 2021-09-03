@@ -199,7 +199,8 @@ function setZoomRange(event, params) {
     dateToInput.val(formattedTo);
 
     setTitle(parentChart);
-    rescaleY(parentChart, dateFrom, dateTo);
+    let exactDates = parseRangeDates(xaxis_range, true);
+    rescaleY(parentChart, exactDates[0], exactDates[1]);
 }
 
 function setGraphRange() {
@@ -281,23 +282,27 @@ function rescaleY(parentChart, dateFrom, dateTo, run) {
         run = true
         //try to figure out the Y axis for each graph
         //decompose the date from and date to into the format of the data
-    var fromMonth = dateFrom.getUTCMonth() + 1;
-    if (fromMonth < 10)
-        fromMonth = "0" + fromMonth;
-    var fromDay = dateFrom.getUTCDate();
-    if (fromDay < 10)
-        fromDay = "0" + fromDay;
-    var dateFromString = dateFrom.getUTCFullYear() + '-' + fromMonth + "-" + fromDay;
+    const dateFromString = formatFakeISODateString(dateFrom);
+    const dateToString = formatFakeISODateString(dateTo);
 
-    var toMonth = dateTo.getUTCMonth() + 1;
-    if (toMonth < 10)
-        toMonth = "0" + toMonth;
+    // var fromMonth = dateFrom.getUTCMonth() + 1;
+    // if (fromMonth < 10)
+    //     fromMonth = "0" + fromMonth;
+    // var fromDay = dateFrom.getUTCDate();
+    // if (fromDay < 10)
+    //     fromDay = "0" + fromDay;
+    // var dateFromString = dateFrom.getUTCFullYear() + '-' + fromMonth + "-" + fromDay;
 
-    var toDay = dateTo.getUTCDate();
-    if (toDay < 10)
-        toDay = "0" + toDay;
-    var dateToString = dateTo.getUTCFullYear() + '-' + toMonth + "-" + toDay;
-    dateToString += 'T23:59:59'
+
+    // var toMonth = dateTo.getUTCMonth() + 1;
+    // if (toMonth < 10)
+    //     toMonth = "0" + toMonth;
+
+    // var toDay = dateTo.getUTCDate();
+    // if (toDay < 10)
+    //     toDay = "0" + toDay;
+    // var dateToString = dateTo.getUTCFullYear() + '-' + toMonth + "-" + toDay;
+    // dateToString += 'T23:59:59'
 
     var graphs = parentChart.find('div.plotlyPlot:visible')[0]
 
@@ -836,24 +841,33 @@ function setVisibility() {
     });
 }
 
-function parseRangeDates(xaxis_range) {
+function parseRangeDates(xaxis_range, exact) {
+    if (typeof(exact) === 'undefined') {
+        exact = false;
+    }
     var dateFrom;
     var dateTo;
 
     //not sure why I need this, but sometimes this comes back as a date object, and other times as a string.
     if (typeof(xaxis_range[0]) == "string") {
-
-        dateFrom = new Date(xaxis_range[0].substring(0, 10));
-        dateTo = new Date(xaxis_range[1].substring(0, 10) + 'T23:59:59');
+        if (exact) {
+            dateFrom = new Date(xaxis_range[0].substring(0, 10) + 'T' + xaxis_range[0].substring(11));
+            dateTo = new Date(xaxis_range[1].substring(0, 10) + 'T' + xaxis_range[1].substring(11));
+        } else {
+            dateFrom = new Date(xaxis_range[0].substring(0, 10));
+            dateTo = new Date(xaxis_range[1].substring(0, 10) + 'T23:59:59');
+        }
     } else {
         dateFrom = new Date(xaxis_range[0]);
         dateTo = new Date(xaxis_range[1]);
 
-        var dtMonth = dateTo.getMonth()
-        var dtYear = dateTo.getFullYear()
-        var dtDate = dateTo.getDate()
-        dateTo.setUTCHours(23, 59, 59, 999)
-        dateTo.setUTCDate(dtDate)
+        if (!exact) {
+            var dtMonth = dateTo.getMonth()
+            var dtYear = dateTo.getFullYear()
+            var dtDate = dateTo.getDate()
+            dateTo.setUTCHours(23, 59, 59, 999)
+            dateTo.setUTCDate(dtDate)
+        }
     }
 
     if (isNaN(dateFrom) || isNaN(dateTo)) {
@@ -861,11 +875,12 @@ function parseRangeDates(xaxis_range) {
         return [];
     }
 
-    //go from midnight UTC on the date from to end-of-day on dateTo
-    dateFrom = new Date(dateFrom.setUTCHours(0, 0, 0, 0));
-    //for date to, set to the last millisecond of the specified date
-    dateTo.setUTCHours(23, 59, 59, 999);
-
+    if (!exact) {
+        //go from midnight UTC on the date from to end-of-day on dateTo
+        dateFrom = new Date(dateFrom.setUTCHours(0, 0, 0, 0));
+        //for date to, set to the last millisecond of the specified date
+        dateTo.setUTCHours(23, 59, 59, 999);
+    }
     return [dateFrom, dateTo];
 }
 

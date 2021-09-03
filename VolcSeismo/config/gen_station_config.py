@@ -69,7 +69,7 @@ VOLCS = {
     'Great Sitkin': {},
     'Kanaga': {},
     'Tanaga': {},
-    'Gareloi': {},
+    'Gareloi': {'zoom': 13},
     'Semisopochnoi': {},
     'Little Sitkin': {},
     'Kantishna': {'latitude': 63.4000, 'longitude': -151.2000, 'radius': 160},
