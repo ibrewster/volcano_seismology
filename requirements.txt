@@ -14,3 +14,4 @@ requests
 pygmt
 flask-compress
 flask-session
+pyyaml

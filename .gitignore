@@ -1,3 +1,4 @@
+config.yml
 pyvenv.cfg
 cache
 Dockerfile.local
