@@ -9,7 +9,7 @@ import yaml
 
 BASE_SCRIPT_PATH = os.path.dirname(__file__)
 R_SCRIPT_PATH = os.path.join(BASE_SCRIPT_PATH, 'calc_anomalies.R')
-DEST_DIR = '/Users/israel/Development/volcano_seismology/VolcSeismo/web/static/img/anomalies'
+DEST_DIR = os.path.join(BASE_SCRIPT_PATH, 'static/img/anomalies')
 
 
 def call_proc(arg):
