@@ -460,6 +460,9 @@ function showStationGraphs(event) {
         $('#content').append(chartDiv);
     }
 
+    //set the anomaly graph source
+    chartDiv.find('div.anomalies img').attr('src', `static/img/anomalies/${station}.png`);
+
     //trigger generation of the default set of graphs
     chartDiv.find('input.channelOption').first().click();
 }
