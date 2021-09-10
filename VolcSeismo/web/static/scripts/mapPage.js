@@ -533,7 +533,14 @@ function createChartDiv(station, site) {
     var chartHeader = createChartHeader(station, site);
     chartDiv.append(chartHeader);
 
+
     var graph_wrapper = $('<div class=graphWrapper>');
+
+    var anomaliesDiv = $('<div class="anomalies">');
+    graph_wrapper.append(anomaliesDiv);
+    var anomaliesImg = $(`<img src="static/img/anomalies/${station}.png">`);
+    anomaliesDiv.append(anomaliesImg);
+
     graph_wrapper.append('<div class="graphArea plotlyPlot">');
     legend_html = '<div id="legend">\
     Legend:\

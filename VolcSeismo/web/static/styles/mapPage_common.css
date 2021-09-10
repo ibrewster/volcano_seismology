@@ -579,6 +579,15 @@ button.downloadData {
     left: 5px;
 }
 
+div.anomalies {
+    width: 100%;
+    overflow: hidden;
+}
+
+div.anomalies img {
+    width: 100%;
+}
+
 @media only screen and (max-width: 800px) {
     img.menu {
         display: inline;
