@@ -61,7 +61,7 @@ ORDER BY datetime"
         destdir,
         '/',
         station,
-        "-1.png",
+        "-long.png",
         sep = ""
     )
 
@@ -85,7 +85,7 @@ ORDER BY datetime"
         destdir,
         '/',
         station,
-        "-2.png",
+        "-short.png",
         sep = ""
     )
 
