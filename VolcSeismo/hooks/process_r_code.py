@@ -29,7 +29,7 @@ def run(data, station):
 
 
 def save_to_db(data, station):
-    conn = psycopg2.connect(host = 'akutan.snap.uaf.edu',
+    conn = psycopg2.connect(host = VARS.DB_HOST,
                             database = 'volcano_seismology',
                             user = VARS.DB_USER,
                             password = VARS.DB_PASSWORD)
