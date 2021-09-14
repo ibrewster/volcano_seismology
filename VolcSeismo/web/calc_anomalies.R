@@ -34,29 +34,30 @@ ORDER BY datetime"
     days=unique(date)
 
     for(i in seq(10,length(days), by=1)){
-    if(length(which(date==days[i]))>3600){
-        
-        training_longterm=data[which(date<days[i]),]
-        training_shortterm=data[which(date>=(days[i]-3) & date<days[i]),]
-        test=data[which(date==days[i]),]
+        if(length(which(date==days[i]))>3600){
+            
+            training_longterm=data[which(date<days[i]),]
+            training_shortterm=data[which(date>=(days[i]-3) & date<days[i]),]
+            test=data[which(date==days[i]),]
 
-        a1_longterm=hist(training_longterm$freq_max10[which(training_longterm$freq_max10>=0.5)], breaks = seq(0.5,20, by=0.1), plot='FALSE')
-        a1_shortterm=hist(training_shortterm$freq_max10[which(training_shortterm$freq_max10>=0.5)], breaks = seq(0.5,20, by=0.1), plot='FALSE')     
-        a2=hist(test$freq_max10[which(test$freq_max10>=0.5)], breaks = seq(0.5,20, by=0.1), plot='FALSE')     
+            a1_longterm=hist(training_longterm$freq_max10[which(training_longterm$freq_max10>=0.5)], breaks = seq(0.5,20, by=0.1), plot='FALSE')
+            a1_shortterm=hist(training_shortterm$freq_max10[which(training_shortterm$freq_max10>=0.5)], breaks = seq(0.5,20, by=0.1), plot='FALSE')     
+            a2=hist(test$freq_max10[which(test$freq_max10>=0.5)], breaks = seq(0.5,20, by=0.1), plot='FALSE')     
 
-        test_longterm=cor.test(a1_longterm$density,a2$density,method = c("pearson"))
-        corcoef1_low_longterm[i]=abs(test_longterm$conf.int[1])
-        corcoef1_up_longterm[i]=abs(test_longterm$conf.int[2])
-        corcoef1_estimate_longterm[i]=test_longterm$estimate
-    
-        test_shortterm=cor.test(a1_shortterm$density,a2$density,method = c("pearson"))
-        corcoef1_low_shortterm[i]=abs(test_shortterm$conf.int[1])
-        corcoef1_up_shortterm[i]=abs(test_shortterm$conf.int[2])
-        corcoef1_estimate_shortterm[i]=test_shortterm$estimate        
+            test_longterm=cor.test(a1_longterm$density,a2$density,method = c("pearson"))
+            corcoef1_low_longterm[i]=abs(test_longterm$conf.int[1])
+            corcoef1_up_longterm[i]=abs(test_longterm$conf.int[2])
+            corcoef1_estimate_longterm[i]=test_longterm$estimate
         
-        date_plot[i]=days[i]
+            test_shortterm=cor.test(a1_shortterm$density,a2$density,method = c("pearson"))
+            corcoef1_low_shortterm[i]=abs(test_shortterm$conf.int[1])
+            corcoef1_up_shortterm[i]=abs(test_shortterm$conf.int[2])
+            corcoef1_estimate_shortterm[i]=test_shortterm$estimate        
+            
+            date_plot[i]=days[i]
+        }
     }
-    }
+
     filename <- paste(
         destdir,
         '/',

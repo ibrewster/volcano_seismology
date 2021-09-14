@@ -461,7 +461,8 @@ function showStationGraphs(event) {
     }
 
     //set the anomaly graph source
-    chartDiv.find('div.anomalies img').attr('src', `static/img/anomalies/${station}.png`);
+    chartDiv.find('div.anomalies.short img').attr('src', `static/img/anomalies/${station}-short.png`);
+    chartDiv.find('div.anomalies.long img').attr('src', `static/img/anomalies/${station}-long.png`);
 
     //trigger generation of the default set of graphs
     chartDiv.find('input.channelOption').first().click();
@@ -539,10 +540,17 @@ function createChartDiv(station, site) {
 
     var graph_wrapper = $('<div class=graphWrapper>');
 
-    var anomaliesDiv = $('<div class="anomalies">');
-    graph_wrapper.append(anomaliesDiv);
-    var anomaliesImg = $(`<img src="static/img/anomalies/${station}.png">`);
+    var anomaliesDiv = $('<div class="anomalies short">');
+    var anomaliesImg = $(`<img src="static/img/anomalies/${station}-short.png">`);
     anomaliesDiv.append(anomaliesImg);
+
+    var anomaliesLongDiv = $('<div class="anomalies long">');
+    var anomaliesLongImg = $(`<img src="static/img/anomalies/${station}-long.png">`);
+    anomaliesLongDiv.append(anomaliesLongImg);
+
+    graph_wrapper.append(anomaliesDiv);
+    graph_wrapper.append(anomaliesLongDiv);
+
 
     graph_wrapper.append('<div class="graphArea plotlyPlot">');
     legend_html = '<div id="legend">\
