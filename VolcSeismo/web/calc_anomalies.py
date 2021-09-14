@@ -42,7 +42,7 @@ if __name__ == "__main__":
                       """)
 
     results = []
-    pool = ThreadPool(5)
+    pool = ThreadPool(10)
     for result in cursor:
         station = result[0]
         ret = pool.apply_async(call_proc, args = (station,))
