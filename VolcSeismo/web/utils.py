@@ -10,7 +10,7 @@ class db_cursor():
         self._cursor_factory = cursor_factory
 
     def __enter__(self):
-        self._conn = psycopg2.connect(host='akutan.snap.uaf.edu',
+        self._conn = psycopg2.connect(host='137.229.113.120',
                                       database='volcano_seismology',
                                       cursor_factory=self._cursor_factory,
                                       user="geodesy",
