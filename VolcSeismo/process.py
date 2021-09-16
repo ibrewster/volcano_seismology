@@ -158,6 +158,3 @@ if __name__ == "__main__":
         except Exception as e:
             print(e)
             missed_flag = True
-
-        if missed_flag:
-            print(f"Missed {station}, {dtstart} to {dtend}")
