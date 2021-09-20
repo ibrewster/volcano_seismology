@@ -43,8 +43,8 @@ def save_to_db(data, station):
                     'latitude': sta_info['latitude'],
                     'longitude': sta_info['longitude']}
         STA_SQL = """INSERT INTO stations
-        (name, latitude,longitude)
-        VALUES (%(name)s, %(latitude)s, %(longitude)s)
+        (name, latitude,longitude,site)
+        VALUES (%(name)s, %(latitude)s, %(longitude)s,'Unspecified')
         RETURNING id"""
         cursor.execute(STA_SQL, sta_args)
         cursor.connection.commit()
