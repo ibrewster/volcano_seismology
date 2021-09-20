@@ -5,9 +5,15 @@ import tempfile
 from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
 
-from .config import config, stations
-from .hooks import run_hooks
-from .waveform import load
+try:
+    from .config import config, stations
+    from .hooks import run_hooks
+    from .waveform import load
+except ImportError:
+    # Not running as a module
+    from config import config, stations
+    from hooks import run_hooks
+    from waveform import load
 
 from obspy import UTCDateTime
 
@@ -111,3 +117,44 @@ def _process_data(STA, sta_dict, STARTTIME, ENDTIME):
         return True  # missed this station/time
 
     run_hooks(stream, waveform_times)
+
+
+if __name__ == "__main__":
+    ENDTIME = UTCDateTime('2020-09-14T16:00:00')
+    STARTTIME = UTCDateTime('2020-09-14T02:40:00')
+    gen_times = []
+    start = STARTTIME
+    end = STARTTIME
+    while end < ENDTIME:
+        end = start + (config['GLOBAL'].getint('minutesperimage', 10) * 60)
+        gen_times.append((start, end, None))
+        start = end
+
+    print(gen_times)
+    procs = []
+    with ProcessPoolExecutor() as executor:
+        for start, end, locs in gen_times:
+            with tempfile.TemporaryDirectory() as tempdir:
+                print("Created temporary directory", tempdir)
+                if locs is None:
+                    locs = stations  # All stations
+                for loc, loc_info in locs.items():
+                    lock_file = os.path.join(tempdir, loc)
+                    if os.path.exists(lock_file):
+                        print(f"!!!ALREADY RAN STATION {station}. SKIPPING!!!!")
+                        continue
+
+                    # Touch a file to indicate this station has been processed for this time range
+                    Path(lock_file).touch()
+
+                    # And do it
+                    future = executor.submit(_process_data, loc,
+                                             loc_info, start, end)
+                    procs.append((loc, start, end, future))
+
+    for station, dtstart, dtend, proc in procs:
+        try:
+            missed_flag = proc.result()
+        except Exception as e:
+            print(e)
+            missed_flag = True
