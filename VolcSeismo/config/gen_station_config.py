@@ -22,7 +22,7 @@ config_dir = os.path.dirname(__file__)
 # generating the station config file
 ####################################################
 # Search for all channels matching the below mask
-CHANNEL_MASK = '[SB]HZ'
+CHANNEL_MASK = '[SBE]HZ'
 
 # The default channel to use if more than one are found
 DEFAULT_CHANNEL = 'BHZ'
@@ -229,7 +229,8 @@ def generate_stations():
             channels, scales, rates = zip(*all_channels[sta])
             locations[volc]['stations'].append((sta, net.dist))
             if sta not in stations:
-                sta_dict = {}
+                sta_dict = {'longitude': net.longitude,
+                            'latitude': net.latitude, }
 
                 if DEFAULT_CHANNEL not in channels:
                     sta_dict['CHAN'] = channels[0]

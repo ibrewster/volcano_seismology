@@ -11,6 +11,7 @@ from rpy2.robjects import pandas2ri
 from rpy2.robjects.conversion import localconverter
 
 from . import _process_r_vars as VARS
+from VolcSeismo import config
 
 
 def run(data, station):
@@ -37,8 +38,19 @@ def save_to_db(data, station):
     cursor.execute("SELECT id FROM stations WHERE name=%s", (station, ))
     sta_id = cursor.fetchone()
     if sta_id is None:
-        print("Unable to store result for", station, ". No station id found.")
-        return
+        sta_info = config.stations[station]
+        sta_args = {'name': station,
+                    'latitude': sta_info['latitude'],
+                    'longitude': sta_info['longitude']}
+        STA_SQL = """INSERT INTO stations
+        (name, latitude,longitude)
+        VALUES (%(name)s, %(latitude)s, %(longitude)s)
+        RETURNING id"""
+        cursor.execute(STA_SQL, sta_args)
+        sta_id = cursor.fetchone()
+        if sta_id is None:
+            print("Unable to store result for", station, ". No station id found.")
+            return
 
     print("Saving result for", station)
     data.replace('', '\\N', inplace = True)

@@ -1,3 +1,4 @@
+import logging
 import os
 import sqlite3
 import tempfile
@@ -114,6 +115,7 @@ def _process_data(STA, sta_dict, STARTTIME, ENDTIME):
 
     stream, waveform_times = load(NET, STA, '--', CHAN, STARTTIME, ENDTIME)
     if stream is None or waveform_times is None:
+        logging.warning(f"No data retrieved for station {STA}, {STARTTIME} to {ENDTIME}")
         return True  # missed this station/time
 
     run_hooks(stream, waveform_times)
