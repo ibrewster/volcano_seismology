@@ -200,7 +200,7 @@ function setZoomRange(event, params) {
 
     setTitle(parentChart);
     let exactDates = parseRangeDates(xaxis_range, true);
-    rescaleY(parentChart, exactDates[0], exactDates[1]);
+    //rescaleY(parentChart, exactDates[0], exactDates[1]);
 }
 
 function setGraphRange() {
@@ -230,9 +230,9 @@ function setGraphRange() {
         ]
     }
 
-    var y_layouts = rescaleY(graph, dateFrom, dateTo, false);
+    //var y_layouts = rescaleY(graph, dateFrom, dateTo, false);
 
-    layout_updates = Object.assign(layout_updates, y_layouts);
+    //layout_updates = Object.assign(layout_updates, y_layouts);
     Plotly.relayout(graphDiv, layout_updates);
 }
 
@@ -980,8 +980,8 @@ function dom_post(url, args) {
     $("body").append(form)
     form[0].submit()
 
-    // remove the frame after 10 minutes. If it takes more than 10 minutes to 
-    // generate and download the item, then this will cause breakage, but I 
+    // remove the frame after 10 minutes. If it takes more than 10 minutes to
+    // generate and download the item, then this will cause breakage, but I
     // have to choose *some* time...
 
     setTimeout(function() {
