@@ -47,7 +47,9 @@ def save_to_db(data, station):
         VALUES (%(name)s, %(latitude)s, %(longitude)s)
         RETURNING id"""
         cursor.execute(STA_SQL, sta_args)
+        cursor.connection.commit()
         sta_id = cursor.fetchone()
+
         if sta_id is None:
             print("Unable to store result for", station, ". No station id found.")
             return
