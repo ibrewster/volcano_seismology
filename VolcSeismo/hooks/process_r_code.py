@@ -78,6 +78,9 @@ def save_to_db(data, station):
     cursor.execute(DEL_SQL, (sta_id[0], 'BHZ', t_start, t_stop))
 
     buffer = StringIO()
+    # Drop any duplicate values so we can do an insert
+    data.drop_duplicates(('datetime', 'station', 'channel'), keep = 'last', inplace = True,
+                         ignore_index = True)
     data.to_csv(buffer, index = False, header = False,
                 na_rep = '\\N')
     buffer.seek(0)

@@ -66,6 +66,10 @@ def run():
                 print("Created temporary directory", tempdir)
                 if locs is None:
                     locs = stations  # All stations
+
+                    #############DEBUG####################
+                    locs = {'ANNE': stations['ANNE'], }
+                    ######################################
                 for loc, loc_info in locs.items():
                     lock_file = os.path.join(tempdir, loc)
                     if os.path.exists(lock_file):
@@ -79,6 +83,9 @@ def run():
                     future = executor.submit(_process_data, loc,
                                              loc_info, start, end)
                     procs.append((loc, start, end, future))
+            ############DEBUG###############
+            break
+            #################################
 
     # process the results
     INSERT_SQL = """
