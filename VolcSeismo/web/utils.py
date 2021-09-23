@@ -34,8 +34,10 @@ def load_stations(max_age=10):
         latitude::float as lat,
         longitude::float as lng,
         site,
-        id as sta_id
+        id as sta_id,
+        channels
     FROM stations
+    INNER JOIN station_channels ON station_channels.station=stations.id
     WHERE EXISTS (SELECT 1
                   FROM data
                   WHERE station=stations.id

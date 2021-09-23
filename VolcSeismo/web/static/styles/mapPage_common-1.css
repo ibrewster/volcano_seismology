@@ -588,6 +588,10 @@ div.anomalies img {
     width: 100%;
 }
 
+img.error {
+    height: 20px;
+}
+
 @media only screen and (max-width: 800px) {
     img.menu {
         display: inline;

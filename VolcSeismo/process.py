@@ -80,9 +80,11 @@ def run():
                     Path(lock_file).touch()
 
                     # And do it
-                    future = executor.submit(_process_data, loc,
-                                             loc_info, start, end)
-                    procs.append((loc, start, end, future))
+#                     future = executor.submit(_process_data, loc,
+#                                              loc_info, start, end)
+#                     procs.append((loc, start, end, future))
+                    result = _process_data(loc, loc_info, start, end)
+                    procs.append((loc, start, end, result))
             ############DEBUG###############
             break
             #################################
@@ -94,6 +96,12 @@ def run():
     VALUES
     (?,?,?)
     """
+    ##################DEBUG######################
+    for station, dtstart, dtend, result in procs:
+        print(station, dtstart, dtend, result)
+
+    return
+    ##############################################
     for station, dtstart, dtend, proc in procs:
         try:
             missed_flag = proc.result()
@@ -147,6 +155,9 @@ if __name__ == "__main__":
                 print("Created temporary directory", tempdir)
                 if locs is None:
                     locs = stations  # All stations
+                    ##########DEBUG####################
+                    locs = {'ANON': stations['ANON'], }
+                    ###################################
                 for loc, loc_info in locs.items():
                     lock_file = os.path.join(tempdir, loc)
                     if os.path.exists(lock_file):
@@ -160,6 +171,10 @@ if __name__ == "__main__":
                     future = executor.submit(_process_data, loc,
                                              loc_info, start, end)
                     procs.append((loc, start, end, future))
+
+            ########DEBUG##########
+            break
+            #######################
 
     for station, dtstart, dtend, proc in procs:
         try:

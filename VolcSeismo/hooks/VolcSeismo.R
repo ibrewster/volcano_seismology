@@ -11,12 +11,9 @@ suppressMessages(library(randomForest))
 suppressMessages(library(RSEIS))
 suppressMessages(library(gatepoints))
 
-runAnalysis <- function(data){
-    time=as.POSIXct(data[,1],format = "%Y-%m-%dT%H:%M:%S")
-    dataZ=data[,2]
-    dataN=data[,3]
-    dataE=data[,4]
-    #plot(time,dataZ,las=1,type='l')
+runAnalysis <- function(time, data){
+    time=as.POSIXct(time,format = "%Y-%m-%dT%H:%M:%S")
+    #plot(time,data,las=1,type='l')
 
     window=500   #the features are calculated in time windows of 'window'/50 seconds
     LP=c();freq_max1=c();freq_max10=c();freq_max20=c();freq_max30=c();freq_max40=c();freq_max50=c();
@@ -31,9 +28,9 @@ runAnalysis <- function(data){
 
 
     steps=50  #50 to have 1s sliding window 
-    for (j in seq(window,length(dataZ),steps)){
+    for (j in seq(window,length(data),steps)){
     #for (j in window){
-    aux_signal=dataZ[(j-window+1):j]    #backward 1s-sliding windows of 10 s
+    aux_signal=data[(j-window+1):j]    #backward 1s-sliding windows of 10 s
     #aux_time=time[(j-window+1):j]
     #plot(aux_time,aux_signal,type='l')
     spectrum=Spectrum(aux_signal, 1/50, one_sided = TRUE, type = 3, method = 1)

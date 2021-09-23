@@ -14,7 +14,7 @@ from . import _process_r_vars as VARS
 from VolcSeismo import config
 
 
-def run(data, station):
+def run(data, station, metadata):
     base = importr('base')
 
     # Load the R script
@@ -22,14 +22,14 @@ def run(data, station):
     base.source(script_path)
     r_func = robjects.globalenv['runAnalysis']
     with localconverter(robjects.default_converter + pandas2ri.converter):
-        result = r_func(data)
-
-    # TODO: Save result to DB
-    save_to_db(result, station)
+        for chan in ('Z', 'E', 'N'):
+            if metadata[chan]:
+                result = r_func(data['time'], data[chan])
+                save_to_db(result, station, metadata[chan])
     return result
 
 
-def save_to_db(data, station):
+def save_to_db(data, station, channel = 'BHZ'):
     conn = psycopg2.connect(host = VARS.DB_HOST,
                             database = 'volcano_seismology',
                             user = VARS.DB_USER,
@@ -54,11 +54,11 @@ def save_to_db(data, station):
             print("Unable to store result for", station, ". No station id found.")
             return
 
-    print("Saving result for", station)
+    print("Saving result for", station, channel)
     data.replace('', '\\N', inplace = True)
     sta_id = sta_id * len(data)
     data['station'] = sta_id
-    data['channel'] = 'BHZ'
+    data['channel'] = channel
     data.rename(columns = {'V1': 'datetime'}, inplace = True)
     data['datetime'] = pandas.to_datetime(data['datetime'], utc = True)
     t_start = data.datetime.min()
@@ -75,7 +75,7 @@ def save_to_db(data, station):
     AND datetime>=%s
     AND datetime<=%s
     """
-    cursor.execute(DEL_SQL, (sta_id[0], 'BHZ', t_start, t_stop))
+    cursor.execute(DEL_SQL, (sta_id[0], channel, t_start, t_stop))
 
     buffer = StringIO()
     # Drop any duplicate values so we can do an insert

@@ -431,6 +431,7 @@ function showStationGraphs(event) {
 
 
     var station = $(this).data('name');
+    var channels = $(this).data('channels');
     var site = $(this).data('site');
 
     var available_charts = $('div.chart:hidden')
@@ -450,13 +451,13 @@ function showStationGraphs(event) {
 
         chartDiv.find('div.chartHeader').remove();
 
-        chartDiv.prepend(createChartHeader(station, site));
+        chartDiv.prepend(createChartHeader(station, site, channels));
     } else if (add_chart && available_charts.length > 0) {
         chartDiv = available_charts.first();
         chartDiv.find('div.chartHeader').remove();
-        chartDiv.prepend(createChartHeader(station, site));
+        chartDiv.prepend(createChartHeader(station, site, channels));
     } else { //create a new div. Not trying to add, and nothing available to replace
-        chartDiv = createChartDiv(station, site);
+        chartDiv = createChartDiv(station, site, channels);
         $('#content').append(chartDiv);
     }
 
@@ -468,7 +469,7 @@ function showStationGraphs(event) {
     chartDiv.find('input.channelOption').first().click();
 }
 
-function createChartHeader(station, site) {
+function createChartHeader(station, site, channels) {
     divid += 1;
     var chartHeader = $('<div class=chartHeader>');
     //title
@@ -490,11 +491,9 @@ function createChartHeader(station, site) {
     channelSelector.append(radioButtons)
     radioButtons.append("Channel: ");
 
-    //baseline selector options
-    var channelOptions = ['BHZ']
-
-    for (var idx in channelOptions) {
-        var channel = channelOptions[idx];
+    //channel selector options
+    for (var idx in channels) {
+        var channel = channels[idx];
         var button = $('<input type="radio" class="channelOption">');
         button.prop('name', divid + '_channel');
         button.data('station', station);
@@ -531,10 +530,10 @@ function createChartHeader(station, site) {
     return chartHeader;
 }
 
-function createChartDiv(station, site) {
+function createChartDiv(station, site, channels) {
     var chartDiv = $('<div class="chart">');
 
-    var chartHeader = createChartHeader(station, site);
+    var chartHeader = createChartHeader(station, site, channels);
     chartDiv.append(chartHeader);
 
 
@@ -542,10 +541,22 @@ function createChartDiv(station, site) {
 
     var anomaliesDiv = $('<div class="anomalies short">');
     var anomaliesImg = $(`<img src="static/img/anomalies/${station}-short.png">`);
+    anomaliesImg.on('error', function() {
+            $(this).addClass('error');
+        })
+        .on('load', function() {
+            $(this).removeClass('error');
+        });
     anomaliesDiv.append(anomaliesImg);
 
     var anomaliesLongDiv = $('<div class="anomalies long">');
     var anomaliesLongImg = $(`<img src="static/img/anomalies/${station}-long.png">`);
+    anomaliesLongImg.on('error', function() {
+            $(this).addClass('error');
+        })
+        .on('load', function() {
+            $(this).removeClass('error');
+        });
     anomaliesLongDiv.append(anomaliesLongImg);
 
     graph_wrapper.append(anomaliesDiv);
@@ -938,6 +949,7 @@ function map_stations(stations) {
 
         $(marker).data('id', station_data['sta_id']);
         $(marker).data('name', station_data['name']);
+        $(marker).data('channels', station_data['channels'])
         var site_id = station_data['site'].replace(' ', '').toLowerCase();
         $(marker).data('site', site_id);
 

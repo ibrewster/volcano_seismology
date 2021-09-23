@@ -12,9 +12,9 @@ from obspy import UTCDateTime
 
 modules = glob.glob(join(dirname(__file__), "*.py"))
 __all__ = [basename(f)[:-3] for f in modules
-           if isfile(f) and
-           not f.endswith('__init__.py') and
-           not f.startswith("_")]
+           if isfile(f)
+           and not f.endswith('__init__.py')
+           and not f.startswith("_")]
 
 
 class HookWarning(UserWarning):
@@ -54,25 +54,37 @@ def run_hooks(stream, times = None):
         times = ((times + DATA_START.timestamp) * 1000).astype('datetime64[ms]')
 
     try:
-        z_data = stream.select(component = 'Z').pop().data
+        z_stream = stream.select(component = 'Z').pop()
+        z_channel = z_stream.stats['channel']
+        z_data = z_stream.data
     except:
         z_data = []
+        z_channel = None
 
     try:
-        n_data = stream.select(component = 'N').pop().data
+        n_stream = stream.select(component = 'N').pop()
+        n_channel = n_stream.stats['channel']
+        n_data = n_stream.data
     except Exception as e:
         n_data = []
+        n_channel = None
 
     try:
-        e_data = stream.select(component = 'E').pop().data
+        e_stream = stream.select(component = 'E').pop()
+        e_data = e_stream.data
+        e_channel = e_stream.stats['channel']
     except Exception as e:
         e_data = []
+        e_channel = None
 
     data_df = _create_df(times, z_data, n_data, e_data)
-    station = stream.traces[0].get_id().split('.')[1]
+    metadata = {'Z': z_channel,
+                'N': n_channel,
+                'E': e_channel, }
+    station = stream.traces[0].stats['station']
     for hook in __all__:
         try:
-            globals()[hook].run(data_df, station)
+            globals()[hook].run(data_df, station, metadata)
         except AttributeError:
             pass  # We already warned this hook would be unavailable
         except TypeError as e:
