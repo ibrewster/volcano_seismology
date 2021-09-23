@@ -67,9 +67,9 @@ def run():
                 if locs is None:
                     locs = stations  # All stations
 
-                    #############DEBUG####################
-                    locs = {'ANNE': stations['ANNE'], }
-                    ######################################
+#                     #############DEBUG####################
+#                     locs = {'ANNE': stations['ANNE'], }
+#                     ######################################
                 for loc, loc_info in locs.items():
                     lock_file = os.path.join(tempdir, loc)
                     if os.path.exists(lock_file):
@@ -80,14 +80,14 @@ def run():
                     Path(lock_file).touch()
 
                     # And do it
-#                     future = executor.submit(_process_data, loc,
-#                                              loc_info, start, end)
-#                     procs.append((loc, start, end, future))
-                    result = _process_data(loc, loc_info, start, end)
-                    procs.append((loc, start, end, result))
-            ############DEBUG###############
-            break
-            #################################
+                    future = executor.submit(_process_data, loc,
+                                             loc_info, start, end)
+                    procs.append((loc, start, end, future))
+#                     result = _process_data(loc, loc_info, start, end)
+#                     procs.append((loc, start, end, result))
+#             ############DEBUG###############
+#             break
+#             #################################
 
     # process the results
     INSERT_SQL = """
@@ -96,12 +96,12 @@ def run():
     VALUES
     (?,?,?)
     """
-    ##################DEBUG######################
-    for station, dtstart, dtend, result in procs:
-        print(station, dtstart, dtend, result)
-
-    return
-    ##############################################
+#     ##################DEBUG######################
+#     for station, dtstart, dtend, result in procs:
+#         print(station, dtstart, dtend, result)
+#
+#     return
+#     ##############################################
     for station, dtstart, dtend, proc in procs:
         try:
             missed_flag = proc.result()

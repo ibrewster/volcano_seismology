@@ -30,6 +30,10 @@ def run(data, station, metadata):
 
 
 def save_to_db(data, station, channel = 'BHZ'):
+    if len(data) == 0:
+        print("NOT saving result for", station, channel, "No data provided")
+        return
+
     conn = psycopg2.connect(host = VARS.DB_HOST,
                             database = 'volcano_seismology',
                             user = VARS.DB_USER,
