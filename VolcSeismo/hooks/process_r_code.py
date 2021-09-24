@@ -67,7 +67,7 @@ def save_to_db(data, station, channel = 'BHZ'):
     data.rename(columns = {'V1': 'datetime'}, inplace = True)
     data['datetime'] = pandas.to_datetime(data['datetime'],
                                           infer_datetime_format = True,
-                                          utc = True)
+                                          utc = True).astype('datetime64[ns, UTC]')
     logging.warning(f"The dtype of the datetime column is: {data.datetime.dtype}")
 
     try:
