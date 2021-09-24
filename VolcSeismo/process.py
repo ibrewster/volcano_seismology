@@ -68,7 +68,7 @@ def run():
                     locs = stations  # All stations
 
 #                     #############DEBUG####################
-#                     locs = {'ANNE': stations['ANNE'], }
+#                     locs = {key: value for key, value in stations.items() if value['CHAN'] == 'EHZ'}
 #                     ######################################
                 for loc, loc_info in locs.items():
                     lock_file = os.path.join(tempdir, loc)
@@ -95,13 +95,13 @@ def run():
     (station, dtfrom, dtto)
     VALUES
     (?,?,?)
-    """
-#     ##################DEBUG######################
+     """
+#     ##################DEBUG########################
 #     for station, dtstart, dtend, result in procs:
 #         print(station, dtstart, dtend, result)
-#
 #     return
-#     ##############################################
+#     ###############################################
+
     for station, dtstart, dtend, proc in procs:
         try:
             missed_flag = proc.result()

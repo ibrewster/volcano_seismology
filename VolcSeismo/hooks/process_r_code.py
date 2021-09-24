@@ -1,3 +1,4 @@
+import logging
 import os
 
 from io import StringIO
@@ -11,7 +12,6 @@ from rpy2.robjects import pandas2ri
 from rpy2.robjects.conversion import localconverter
 
 from . import _process_r_vars as VARS
-from VolcSeismo import config
 
 
 def run(data, station, metadata):
@@ -30,6 +30,7 @@ def run(data, station, metadata):
 
 
 def save_to_db(data, station, channel = 'BHZ'):
+    from VolcSeismo import config
     if len(data) == 0:
         print("NOT saving result for", station, channel, "No data provided")
         return
@@ -65,7 +66,12 @@ def save_to_db(data, station, channel = 'BHZ'):
     data['channel'] = channel
     data.rename(columns = {'V1': 'datetime'}, inplace = True)
     data['datetime'] = pandas.to_datetime(data['datetime'], utc = True)
-    t_start = data.datetime.min()
+    try:
+        t_start = data.datetime.min()
+    except Exception as e:
+        logging.exception(f"Exception getting min datetime ({e}):\n")
+        raise
+
     t_stop = data.datetime.max()
 
     # Set DB to UTC so we don't have time zone issues
