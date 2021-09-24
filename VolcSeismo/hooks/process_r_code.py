@@ -66,9 +66,12 @@ def save_to_db(data, station, channel = 'BHZ'):
     data['channel'] = channel
     data.rename(columns = {'V1': 'datetime'}, inplace = True)
     data['datetime'] = pandas.to_datetime(data['datetime'], utc = True)
+    logging.warning(f"The dtype of the datetime column is: {data.datetime.dtype}")
+
     try:
         t_start = data.datetime.min()
     except Exception as e:
+        logging.warning(f"The value of the datetime column is: {data.datetime}")
         logging.exception(f"Exception getting min datetime ({e}):\n")
         raise
 
