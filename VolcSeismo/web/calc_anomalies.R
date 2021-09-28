@@ -6,8 +6,8 @@ library(RPostgres)
 library(DBI)
 
 
-calcAnomalies <- function(station, channel,destdir){
-    db_config <- config::get("akutan")
+calcAnomalies <- function(station, channel, destdir){
+    db_config <- config::get("DATABASE")
     con <- dbConnect(RPostgres::Postgres(),
                     user = db_config$user,
                     password = db_config$password,
