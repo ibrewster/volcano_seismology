@@ -32,6 +32,9 @@ ORDER BY datetime"
     corcoef1_low_shortterm=c();corcoef1_up_shortterm=c();corcoef1_estimate_shortterm=c()
     date=chron(substr(as.character(data$date),1,10),format=c('y-m-d'))
     days=unique(date)
+    if(length(days)<10) {
+        stop(paste("Not enough data to generate a graph for",station,channel))
+    }
 
     for(i in seq(10,length(days), by=1)){
         if(length(which(date==days[i]))>3600){

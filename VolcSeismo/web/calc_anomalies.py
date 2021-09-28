@@ -60,8 +60,8 @@ WHERE EXISTS (SELECT 1
 
     db_conn.close()
 
-    for sta, res in results:
-        print("Result for", sta, ":", res.get())
+    for sta, chan, res in results:
+        print("Result for", sta, chan, ":", res.get())
 
 
 
