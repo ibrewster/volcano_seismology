@@ -83,8 +83,10 @@ def run():
                     future = executor.submit(_process_data, loc,
                                              loc_info, start, end)
                     procs.append((loc, start, end, future))
+#                     ##################DEBUG################
 #                     result = _process_data(loc, loc_info, start, end)
 #                     procs.append((loc, start, end, result))
+#                     #######################################
 #             ############DEBUG###############
 #             break
 #             #################################
