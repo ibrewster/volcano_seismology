@@ -1,3 +1,5 @@
+#!/bin/bash
+
 psql -U israel volcano_seismology << EOF
 BEGIN;
 CREATE TABLE station_channels_new AS (
