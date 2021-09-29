@@ -499,6 +499,20 @@ function createChartHeader(station, site, channels) {
     radioButtons.append("Channel: ");
 
     //channel selector options
+    //sort the "Z" channel first
+    const zIndex = channels.findIndex(function(str) {
+        if (str[str.length - 1] === 'Z') {
+            return true;
+        }
+        return false;
+    });
+
+    if (zIndex >= 0) {
+        const zChan = channels[zIndex];
+        channels.splice(zIndex, 1);
+        channels.unshift(zChan);
+    }
+
     for (var idx in channels) {
         var channel = channels[idx];
         var button = $('<input type="radio" class="channelOption">');
