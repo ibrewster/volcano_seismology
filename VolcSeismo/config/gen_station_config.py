@@ -51,7 +51,7 @@ VOLCS = {
     'Spurr': {},
     'Redoubt': {},
     'Iliamna': {},
-    'Augustine': {},
+    'Augustine': {'zoom': 13, },
     'Fourpeaked': {},
     'Katmai Region': {'latitude': 58.2790, 'longitude': -154.9533, 'radius': 100},
     'Peulik': {},

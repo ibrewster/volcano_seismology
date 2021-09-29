@@ -115,17 +115,27 @@ function registerDoubleClick(event) {
 
 function generateGraphs() {
     //"this" is the button that was clicked
-    var dest = $(this).closest('div.chart');
-    var optionsDiv = dest.find('div.channelSel');
-    var station = optionsDiv.find('.channelOption:checked').data('station');
+    const dest = $(this).closest('div.chart');
+    const optionsDiv = dest.find('div.channelSel');
+    //Not neccesarily redundant, as this function could 
+    //be called() with an arbitrary button as "this"
+    const selChannelOpt = optionsDiv.find('.channelOption:checked')
+    const station = selChannelOpt.data('station');
+    const channel = selChannelOpt.data('channel');
+
+    const anomaliesImgs = dest.find('div.anomalies');
+    if (channel[channel.length - 1] === 'Z')
+        anomaliesImgs.removeClass('hidden');
+    else
+        anomaliesImgs.addClass('hidden');
 
     dest.show();
 
-    var dateFromFld = dest.find('input.dateFrom');
-    var dateToFld = dest.find('input.dateTo');
+    const dateFromFld = dest.find('input.dateFrom');
+    const dateToFld = dest.find('input.dateTo');
 
-    var dateFrom = dateFromFld.val();
-    var dateTo = dateToFld.val();
+    let dateFrom = dateFromFld.val();
+    let dateTo = dateToFld.val();
 
     if (dateFrom == '') {
         dateFrom = new Date(new Date() - 604800000); //one-week
@@ -135,9 +145,6 @@ function generateGraphs() {
         dateFromFld.val(dateFrom);
         dateToFld.val(dateTo);
     }
-
-    //find the channel option to use
-    var channel = optionsDiv.find('input[type=radio]:checked').data('channel');
 
     var reqParams = {
         'station': station,
@@ -530,6 +537,7 @@ function createChartHeader(station, site, channels) {
     return chartHeader;
 }
 
+
 function createChartDiv(station, site, channels) {
     var chartDiv = $('<div class="chart">');
 
@@ -540,13 +548,15 @@ function createChartDiv(station, site, channels) {
     var graph_wrapper = $('<div class=graphWrapper>');
 
     var anomaliesDiv = $('<div class="anomalies short">');
-    var anomaliesImg = $(`<img src="static/img/anomalies/${station}-short.png">`);
+    var anomaliesImg = $('<img>');
     anomaliesImg.on('error', function() {
             $(this).addClass('error');
         })
         .on('load', function() {
             $(this).removeClass('error');
-        });
+        })
+        .attr('src', `static/img/anomalies/${station}-short.png`);
+
     anomaliesDiv.append(anomaliesImg);
 
     var anomaliesLongDiv = $('<div class="anomalies long">');

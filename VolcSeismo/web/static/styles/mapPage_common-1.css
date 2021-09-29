@@ -588,8 +588,12 @@ div.anomalies img {
     width: 100%;
 }
 
-img.error {
+div.anomalies img.error {
     height: 20px;
+}
+
+div.anomalies.hidden {
+    height: 0px;
 }
 
 @media only screen and (max-width: 800px) {
