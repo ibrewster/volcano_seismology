@@ -45,7 +45,10 @@ WHERE EXISTS (SELECT 1
 
     results = []
     pool = ThreadPool(10)
-    for result in cursor:
+    results = cursor.fetchall()
+    db_conn.close()
+
+    for result in results:
         station = result[0]
         channels = result[1]
         for channel in channels:
@@ -57,8 +60,6 @@ WHERE EXISTS (SELECT 1
     print("Waiting for complete")
     pool.close()
     pool.join()
-
-    db_conn.close()
 
     for sta, chan, res in results:
         print("Result for", sta, chan, ":", res.get())
