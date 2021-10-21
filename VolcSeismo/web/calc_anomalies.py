@@ -1,6 +1,8 @@
 import os
 import subprocess
+import time
 
+from datetime import datetime
 from multiprocessing.pool import ThreadPool
 
 import psycopg2
@@ -21,6 +23,7 @@ def call_proc(station, channel):
 
 
 if __name__ == "__main__":
+    start_t = time.time()
     with open(os.path.join(BASE_SCRIPT_PATH, 'config.yml'), 'r') as config_file:
         config = yaml.safe_load(config_file)
 
@@ -57,12 +60,12 @@ WHERE EXISTS (SELECT 1
             ret = pool.apply_async(call_proc, args = (station, channel))
             results.append((station, channel, ret))
 
-    print("Waiting for complete")
+    print(f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}Waiting for complete")
     pool.close()
     pool.join()
 
     for sta, chan, res in results:
         print("Result for", sta, chan, ":", res.get())
 
-
+    print(f"Completed run in {(time.time()-start_t)/60} Minutes")
 
