@@ -45,12 +45,12 @@ WHERE EXISTS (SELECT 1
 
     results = []
     pool = ThreadPool(10)
-    results = cursor.fetchall()
+    db_data = cursor.fetchall()
     db_conn.close()
 
-    for result in results:
-        station = result[0]
-        channels = result[1]
+    for row_data in db_data:
+        station = row_data[0]
+        channels = row_data[1]
         for channel in channels:
             if not channel.endswith('HZ'):
                 continue
