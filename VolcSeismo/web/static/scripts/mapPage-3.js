@@ -22,6 +22,7 @@ $(document).ready(function() {
     $(document).on('click', 'span.dateBtns button', dateRangeClicked);
     $(document).on('click', 'input.channelOption', generateGraphs);
     $(document).on('click', 'button.downloadData', downloadData);
+    $(document).on('click', '.tabs button', setTab);
     $('img.menu').click(showMenu);
 
     $(document).on('change', 'div.chartHeader input.date', changeDateRangeInput);
@@ -35,6 +36,26 @@ $(document).ready(function() {
     initMap();
     initFinal();
 })
+
+function setTab(){
+    $(this).closest('.tabs').find('button').removeClass('current');
+    $(this).addClass('current');
+    $('.tabView').hide();
+    closeAllGraphs();
+
+    const dest=$(this).data('target');
+    if(dest!='None'){
+        $(`#${dest}`).show();
+    }
+
+    if($(this).is('#stationsTab')){
+        $('#content').removeClass('anomaliestab');
+    }
+    else{
+        $('#content').addClass('anomaliestab');
+    }
+
+}
 
 function downloadData() {
     //context should be a button in a graph div header.
@@ -430,6 +451,10 @@ function dateRangeClicked() {
 }
 
 function showStationGraphs(event) {
+    //we clicked on a station. Switch to the station graphs tab
+    if(!$('#stationsTab').hasClass('current'))
+        $('#stationsTab').click();
+
     //get the REAL event from the fake GoogleMaps event
     event = Object.values(event)
         .filter(function(property) {
@@ -469,8 +494,8 @@ function showStationGraphs(event) {
     }
 
     //set the anomaly graph source
-    chartDiv.find('div.anomalies.short img').attr('src', `static/img/anomalies/${station}-short.png`);
-    chartDiv.find('div.anomalies.long img').attr('src', `static/img/anomalies/${station}-long.png`);
+    //chartDiv.find('div.anomalies.short img').attr('src', `static/img/anomalies/${station}-short.png`);
+    //chartDiv.find('div.anomalies.long img').attr('src', `static/img/anomalies/${station}-long.png`);
 
     //trigger generation of the default set of graphs
     chartDiv.find('input.channelOption').first().click();
@@ -551,6 +576,38 @@ function createChartHeader(station, site, channels) {
     return chartHeader;
 }
 
+function createAnomaliesDiv(station,long,short){
+    let anomaliesTopDiv=$('<div class="anomaliesTop">');
+
+    anomaliesTopDiv.append(`<div class=title>${station}</div>`);
+
+    let anomaliesDiv = $('<div class="anomalies short">');
+    let anomaliesImg = $('<img>');
+    anomaliesImg.on('error', function() {
+            $(this).closest('div.anomaliesTop').addClass('error');
+        })
+        .on('load', function() {
+            $(this).closest('div.anomaliesTop').removeClass('error');
+        })
+        .attr('src', short);
+
+    anomaliesDiv.append(anomaliesImg);
+    anomaliesTopDiv.append(anomaliesDiv);
+
+    let anomaliesLongDiv = $('<div class="anomalies long">');
+    let anomaliesLongImg = $('<img>');
+    anomaliesLongImg.on('error', function() {
+            $(this).closest('div.anomaliesTop').addClass('error');
+        })
+        .on('load', function() {
+            $(this).closest('div.anomaliesTop').removeClass('error');
+        })
+        .attr('src',long);
+    anomaliesLongDiv.append(anomaliesLongImg);
+    anomaliesTopDiv.append(anomaliesLongDiv);
+
+    return anomaliesTopDiv;
+}
 
 function createChartDiv(station, site, channels) {
     var chartDiv = $('<div class="chart">');
@@ -560,32 +617,6 @@ function createChartDiv(station, site, channels) {
 
 
     var graph_wrapper = $('<div class=graphWrapper>');
-
-    var anomaliesDiv = $('<div class="anomalies short">');
-    var anomaliesImg = $('<img>');
-    anomaliesImg.on('error', function() {
-            $(this).addClass('error');
-        })
-        .on('load', function() {
-            $(this).removeClass('error');
-        })
-        .attr('src', `static/img/anomalies/${station}-short.png`);
-
-    anomaliesDiv.append(anomaliesImg);
-
-    var anomaliesLongDiv = $('<div class="anomalies long">');
-    var anomaliesLongImg = $(`<img src="static/img/anomalies/${station}-long.png">`);
-    anomaliesLongImg.on('error', function() {
-            $(this).addClass('error');
-        })
-        .on('load', function() {
-            $(this).removeClass('error');
-        });
-    anomaliesLongDiv.append(anomaliesLongImg);
-
-    graph_wrapper.append(anomaliesDiv);
-    graph_wrapper.append(anomaliesLongDiv);
-
 
     graph_wrapper.append('<div class="graphArea plotlyPlot">');
     legend_html = '<div id="legend">\
@@ -986,11 +1017,17 @@ function map_stations(stations) {
 
 }
 
+function closeAllGraphs(){
+    $('div.chart').find('img.closeBtn').each(closeGraph);
+}
+
 function closeGraph() {
     //"this" is the close button
     var graphDiv = $(this).closest('div.chart').hide();
     Plotly.purge(graphDiv.find('div.graphArea')[0]);
-    Plotly.purge(graphDiv.find('div.tiltArea')[0]);
+    const tiltArea=graphDiv.find('div.tiltArea')
+    if(tiltArea.length>0)
+        Plotly.purge(tiltArea[0]);
     graphDiv.remove();
 }
 
@@ -1082,10 +1119,30 @@ function setMapLocation() {
     map.setZoom(zoom);
 
     //close any plot divs
-    $('.chart').remove();
+    closeAllGraphs();
     global_graph_div = null;
 
-    $(this).addClass('current');
+    // $(this).addClass('current');
+    setTimeout(getAnomalies,250);
+}
+
+function getAnomalies(){
+    const bounds=map.getBounds().toJSON();
+    $.getJSON('listAnomalies',{'bounds':JSON.stringify(bounds)})
+    .done(showAnomalies)
+    .fail(function(a,b,c){
+        console.error(a);
+        console.error(b);
+        console.error(c);
+    })
+}
+
+function showAnomalies(data){
+    let anomaliesDiv=$('#anomaliesPlots').empty();
+    for( const station in data){
+        let [short, long]=data[station];
+        anomaliesDiv.append(createAnomaliesDiv(station,long,short));
+    }
 }
 
 function setSpecialText() {

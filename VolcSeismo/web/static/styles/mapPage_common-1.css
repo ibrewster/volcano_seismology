@@ -235,11 +235,58 @@ label {
     box-sizing: border-box;
 }
 
+#anomaliesPlots{
+    display:flex;
+    flex: 1 1 auto;
+}
+
+.anomaliesTop{
+    width:600px;
+}
+
+.anomaliesTop .title{
+    text-align: center;
+    font-weight: bold;
+}
+
+.tabs{
+    display:inline-block;
+}
+
+.tabs button{
+    position:relative;
+    bottom: -2px;
+    height:2em;
+    background-color:white;
+    border:2px outset;
+    border-bottom:none;
+    border-top-left-radius: 5px;
+    border-top-right-radius: 5px;
+    vertical-align:bottom;
+    cursor:pointer;
+}
+
+.tabs button.current{
+    background-color:whitesmoke;
+    height:2.5em;
+    border-bottom:1px solid whitesmoke;
+    bottom:-3px;
+}
+
 #content {
     display: flex;
     flex-wrap: wrap;
     min-height: 0px;
     min-width: 250px;
+}
+
+#content.anomaliestab{
+    flex-wrap: nowrap;
+    overflow-y:auto;
+}
+
+#content.anomaliestab #mapContainer{
+    min-width:50vw;
 }
 
 #mapContainer {
@@ -588,7 +635,13 @@ div.anomalies img {
     width: 100%;
 }
 
-div.anomalies img.error {
+div.anomaliesTop.error{
+    width:auto;
+    margin-left:3px;
+    margin-right:3px;
+}
+
+div.anomaliesTop.error img {
     height: 20px;
 }
 

@@ -11,13 +11,22 @@
                 </option>
             {%endfor%}
             </select>
+
+            <div id="plotTabs" class="tabs">
+                <button data-target="anomaliesPlots" class="current">
+                    Anomalies Graphs
+                </button><button id="stationsTab" data-target="None">
+                    Station Graphs
+                </button>
+            </div>
+
             <button id="download">Download Images</button>
         </div>
         <div id=locsRight class="locsDiv">
         </div>
     </div>
 </div>
-<div id="content">
+<div id="content" class="anomaliestab">
     <div id="mapContainer" class="noPrint">
         <div id="options">
             <span id="instrText">Hold shift while clicking to graph multiple stations</span>
@@ -28,4 +37,8 @@
             </div>
         </div>
     </div>
+
+    <div id="anomaliesPlots" class="tabView">
+    </div>
+
 </div>

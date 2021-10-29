@@ -587,3 +587,25 @@ FROM
         print("processed results in", time.time() - t3)
         print("Got", len(graph_data['dates']), "rows in", time.time() - t1, "seconds")
         return graph_data
+
+
+@app.route('/listAnomalies')
+def list_anomalies():
+    bounds = json.loads(flask.request.args['bounds'])
+    SQL = """SELECT
+        name
+    FROM stations
+    WHERE location &&
+    ST_MakeEnvelope(%(west)s,%(south)s,%(east)s,%(north)s,4326)"""
+    with utils.db_cursor() as cursor:
+        cursor.execute(SQL, bounds)
+        stations = cursor.fetchall()
+
+    result = {}
+    for station in stations:
+        station = station[0]
+        short = f"/static/img/anomalies/{station}-short.png"
+        long = f"/static/img/anomalies/{station}-long.png"
+        result[station] = [short, long]
+
+    return flask.jsonify(result)
