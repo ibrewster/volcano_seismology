@@ -456,11 +456,12 @@ function showStationGraphs(event) {
         $('#stationsTab').click();
 
     //get the REAL event from the fake GoogleMaps event
-    event = Object.values(event)
+    if(typeof(event) != 'undefined'){
+        event = Object.values(event)
         .filter(function(property) {
             return property instanceof window.MouseEvent;
         })[0];
-
+    }
 
     var station = $(this).data('name');
     var channels = $(this).data('channels');
@@ -576,10 +577,15 @@ function createChartHeader(station, site, channels) {
     return chartHeader;
 }
 
-function createAnomaliesDiv(station,long,short){
+function createAnomaliesDiv(station,long,short,stationID){
     let anomaliesTopDiv=$('<div class="anomaliesTop">');
 
     anomaliesTopDiv.append(`<div class=title>${station}</div>`);
+    anomaliesTopDiv.data('stationID',stationID);
+    anomaliesTopDiv.on('click',function(){
+        let id=$(this).data('stationID');
+        showStationGraphs.call(markerLookup[id]);
+    });
 
     let anomaliesDiv = $('<div class="anomalies short">');
     let anomaliesImg = $('<img>');
@@ -970,9 +976,9 @@ function parseRangeDates(xaxis_range, exact) {
 
 var layoutCount = 0;
 
-
+let markerLookup={};
 function map_stations(stations) {
-
+    markerLookup={};
     for (var station in stations) {
         var station_data = stations[station];
 
@@ -1002,13 +1008,16 @@ function map_stations(stations) {
             zIndex: 99
         });
 
-        $(marker).data('id', station_data['sta_id']);
+        let stationID=station_data['sta_id']
+
+        $(marker).data('id', stationID);
         $(marker).data('name', station_data['name']);
         $(marker).data('channels', station_data['channels'])
         var site_id = station_data['site'].replace(' ', '').toLowerCase();
         $(marker).data('site', site_id);
 
         stationMarkers.push(marker);
+        markerLookup[stationID]=marker;
 
         marker.setMap(map);
 
@@ -1140,8 +1149,8 @@ function getAnomalies(){
 function showAnomalies(data){
     let anomaliesDiv=$('#anomaliesPlots').empty();
     for( const station in data){
-        let [short, long]=data[station];
-        anomaliesDiv.append(createAnomaliesDiv(station,long,short));
+        let [short, long, id]=data[station];
+        anomaliesDiv.append(createAnomaliesDiv(station,long,short, id));
     }
 }
 

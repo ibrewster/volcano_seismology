@@ -242,6 +242,7 @@ label {
 
 .anomaliesTop{
     width:600px;
+    cursor:pointer;
 }
 
 .anomaliesTop .title{
