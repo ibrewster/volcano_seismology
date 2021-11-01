@@ -1137,7 +1137,7 @@ function setMapLocation() {
     global_graph_div = null;
 
     // $(this).addClass('current');
-    setTimeout(getAnomalies,250);
+    getAnomaliesDebounce();
 }
 
 let anomTimer=null;

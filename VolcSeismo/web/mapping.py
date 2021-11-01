@@ -597,9 +597,15 @@ def list_anomalies():
     FROM stations
     WHERE location &&
     ST_MakeEnvelope(%(west)s,%(south)s,%(east)s,%(north)s,4326)
+    AND EXISTS (SELECT 1
+	FROM last_data
+	WHERE station=stations.id
+        AND lastdata>now()-'10 years'::interval
+	LIMIT 1)
     ORDER BY name
     """
     with utils.db_cursor() as cursor:
+        print(cursor.mogrify(SQL, bounds))
         cursor.execute(SQL, bounds)
         stations = cursor.fetchall()
 
