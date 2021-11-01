@@ -238,6 +238,8 @@ label {
 #anomaliesPlots{
     display:flex;
     flex: 1 1 auto;
+    z-index:1;
+    background-color: white;
 }
 
 .anomaliesTop{
@@ -256,22 +258,25 @@ label {
 
 .tabs button{
     position:relative;
-    bottom: -2px;
+    bottom: -3px;
     height:2em;
-    background-color:white;
-    border:2px outset;
+    background-color:whitesmoke;
+    border:1px solid #C9C9C9;
     border-bottom:none;
     border-top-left-radius: 5px;
     border-top-right-radius: 5px;
     vertical-align:bottom;
     cursor:pointer;
+    box-shadow: 2px 2px 2px rgba(0, 0, 0, .5);
 }
 
 .tabs button.current{
-    background-color:whitesmoke;
-    height:2.5em;
-    border-bottom:1px solid whitesmoke;
-    bottom:-3px;
+    background-color:white;
+    height:calc(2em + 7px);
+    bottom:-4px;
+    border-bottom:1px solid #C9C9C9;
+    box-shadow: 6px 6px 6px rgba(0, 0, 0, .5);
+
 }
 
 #content {
@@ -305,6 +310,8 @@ label {
     box-sizing: border-box;
     position: relative;
     overflow-y: visible;
+    z-index:1;
+    background-color: white;
 }
 
 #mapWrapper {
