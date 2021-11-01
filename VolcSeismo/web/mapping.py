@@ -612,8 +612,8 @@ def list_anomalies():
     result = {}
     for station in stations:
         station, station_id = station
-        short = f"/static/img/anomalies/{station}-short.png"
-        long = f"/static/img/anomalies/{station}-long.png"
+        short = f"static/img/anomalies/{station}-short.png"
+        long = f"static/img/anomalies/{station}-long.png"
         result[station] = [short, long, station_id]
 
     return flask.jsonify(result)
