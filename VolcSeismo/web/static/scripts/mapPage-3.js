@@ -94,6 +94,11 @@ function initMap() {
 
     map.addListener('center_changed', function() {
         $('#locations div .tab').removeClass('current');
+        getAnomaliesDebounce();
+    });
+
+    map.addListener('zoom_changed', function() {
+        getAnomaliesDebounce();
     });
 
     // Get a list of stations to create markers for
@@ -1135,7 +1140,17 @@ function setMapLocation() {
     setTimeout(getAnomalies,250);
 }
 
+let anomTimer=null;
+function getAnomaliesDebounce(){
+    if(anomTimer!==null){
+        clearTimeout(anomTimer);
+    }
+
+    anomTimer=setTimeout(getAnomalies,500);
+}
+
 function getAnomalies(){
+    anomTimer=null;
     const bounds=map.getBounds().toJSON();
     $.getJSON('listAnomalies',{'bounds':JSON.stringify(bounds)})
     .done(showAnomalies)
