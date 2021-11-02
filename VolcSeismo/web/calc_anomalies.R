@@ -89,13 +89,13 @@ ORDER BY datetime"
 
     par(mar=c(2,4.1,.5,2.1))
 
-    plot(dp_asdate,100*(1-corcoef1_estimate_longterm), 
+    plot(dp_asdate,100*(1-corcoef1_estimate_longterm_A), 
          type = "l",ylim = c(0,100),
          xlim=c(dp_asdate[10], dp_asdate[length(date_plot)]), 
          ylab = "Long-term Anomaly (%)",xlab="")
 
     polygon(c(dp_asdate, rev(dp_asdate)), 
-            c(100*(1-corcoef1_low_longterm), rev(100*(1-corcoef1_up_longterm))),
+            c(100*(1-corcoef1_low_longterm_A), rev(100*(1-corcoef1_up_longterm_A))),
             col = "#87CEEB", border='black')
     abline(h=50, col="gray", lty=2)
     current_long_term_anomaly=100*(1-corcoef1_estimate_longterm_A)[end(100*(1-corcoef1_estimate_longterm_A))][1]
@@ -114,13 +114,13 @@ ORDER BY datetime"
     png(file=filename, width=7.5, height = 4, units="in", res=600) 
     par(mar=c(2,4.1,.5,2.1))
     
-    plot(dp_asdate,100*(1-corcoef1_estimate_shortterm), 
+    plot(dp_asdate,100*(1-corcoef1_estimate_shortterm_A), 
          type = "l", ylim = c(0,100),
          xlim=c(dp_asdate[10], dp_asdate[length(date_plot)]), 
          ylab = "Short-term Anomaly (%)", xlab="")
 
     polygon(c(dp_asdate, rev(dp_asdate)), 
-            c(100*(1-corcoef1_low_shortterm), rev(100*(1-corcoef1_up_shortterm))),
+            c(100*(1-corcoef1_low_shortterm_A), rev(100*(1-corcoef1_up_shortterm_A))),
             col = "#87CEEB", border='black')
     abline(h=50, col="gray", lty=2)
     current_short_term_anomaly=100*(1-corcoef1_estimate_shortterm_A)[end(100*(1-corcoef1_estimate_shortterm_A))][1]
