@@ -37,8 +37,8 @@ ORDER BY datetime"
     #data=data.frame(read.csv(file = "/Users/israel/Downloads/AUCH-BHZ-2021-06-29T00_00_00Z-2021-09-06T23_59_59Z.csv"))
     print("Beginning calc anomalies function")
     date_plot=c();
-    corcoef1_low_longterm=c();corcoef1_up_longterm=c();corcoef1_estimate_longterm=c()
-    corcoef1_low_shortterm=c();corcoef1_up_shortterm=c();corcoef1_estimate_shortterm=c()
+    corcoef1_low_longterm_A=c();corcoef1_up_longterm_A=c();corcoef1_estimate_longterm_A=c()
+    corcoef1_low_shortterm_A=c();corcoef1_up_shortterm_A=c();corcoef1_estimate_shortterm_A=c()
     date=chron(substr(as.character(data$date),1,10),format=c('y-m-d'))
     days=unique(date)
     if(length(days)<10) {
