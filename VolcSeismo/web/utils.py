@@ -39,9 +39,9 @@ def load_stations(max_age=10):
     FROM stations
     INNER JOIN station_channels ON station_channels.station=stations.id
     WHERE EXISTS (SELECT 1
-                  FROM data
+                  FROM last_data
                   WHERE station=stations.id
-                  AND datetime>now()-%s
+                  AND lastdata>now()-%s
                   LIMIT 1);
     """
 
