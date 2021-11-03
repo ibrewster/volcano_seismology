@@ -41,7 +41,7 @@ FROM stations
 INNER JOIN station_channels
 ON station_channels.station=stations.id
 WHERE EXISTS (SELECT 1
-	FROM data
+	FROM last_data
 	WHERE station=stations.id
 	LIMIT 1);
                       """)
