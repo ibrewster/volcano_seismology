@@ -6,7 +6,7 @@ CREATE TABLE station_channels_new AS (
     SELECT station, array_agg(channel) as channels 
     FROM (
         SELECT station,channel 
-        FROM part_data 
+        FROM data
         GROUP BY station,channel) AS s1 
     GROUP BY station);
 GRANT SELECT ON station_channels_new TO specgen;
