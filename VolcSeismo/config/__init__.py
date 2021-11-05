@@ -16,8 +16,12 @@ def load_config():
 config = load_config()
 
 try:
-    from .station_config import locations, stations
+    from .station_config import stations
+    from .location_config import Locations
 except ImportError:
     locations = {}
     stations = {}
+else:
+    # instantiate an instance of the locations class
+    locations = Locations()
 
