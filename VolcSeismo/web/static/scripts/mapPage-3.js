@@ -10,6 +10,22 @@ var iconColors = {
     'pbo': '#EAFF00'
 }
 
+// let areaBounds={}
+// let numOpts=$('#volcSelect option').length
+// function generateMapBounds(i){
+//     if(i>=numOpts)
+//         return;
+//     $('#volcSelect')[0].selectedIndex=i;
+//     $('#volcSelect').change();
+//     setTimeout(function(){
+//         let bounds=map.getBounds().toJSON();
+//         let sector=$('#volcSelect').val();
+//         areaBounds[sector]=bounds;
+//         setTimeout(generateMapBounds(i+1),0);
+//     },500);
+// }
+
+
 stationMarkers = []
 
 var iframe_id = 0;
@@ -35,6 +51,7 @@ $(document).ready(function() {
 
     initMap();
     initFinal();
+    getAnomaliesDebounce();
 })
 
 function setTab(){
@@ -90,16 +107,17 @@ function initMap() {
             position: google.maps.ControlPosition.BOTTOM_LEFT,
         },
         fullscreenControl: false,
+        isFractionalZoomEnabled: true
     });
 
-    map.addListener('center_changed', function() {
-        $('#locations div .tab').removeClass('current');
-        getAnomaliesDebounce();
-    });
+    // map.addListener('center_changed', function() {
+    //     $('#locations div .tab').removeClass('current');
+    //     getAnomaliesDebounce();
+    // });
 
-    map.addListener('zoom_changed', function() {
-        getAnomaliesDebounce();
-    });
+    // map.addListener('zoom_changed', function() {
+    //     getAnomaliesDebounce();
+    // });
 
     // Get a list of stations to create markers for
     $.get('list_stations', map_stations);
@@ -1137,7 +1155,7 @@ function setMapLocation() {
     global_graph_div = null;
 
     // $(this).addClass('current');
-    getAnomaliesDebounce();
+    // getAnomaliesDebounce();
 }
 
 let anomTimer=null;
@@ -1149,25 +1167,73 @@ function getAnomaliesDebounce(){
     anomTimer=setTimeout(getAnomalies,500);
 }
 
+function getBoundsFromLatLng(lat, lng, radiusInKm){
+    const lat_change = radiusInKm/111.2;
+    const kmperdegree=Math.abs(Math.cos(lat*(Math.PI/180)))*111.320;
+    const lon_change=radiusInKm/kmperdegree;
+    const bounds = { 
+        lat_min : lat - lat_change,
+        lon_min : lng - lon_change,
+        lat_max : lat + lat_change,
+        lon_max : lng + lon_change
+    };
+
+    const min=new google.maps.LatLng(bounds['lat_min'], bounds['lon_min']);
+    const max=new google.maps.LatLng(bounds['lat_max'], bounds['lon_max']);
+
+    const mapBounds=new google.maps.LatLngBounds(min, max)
+    map.fitBounds(mapBounds)
+}
+
+// function getAnomalies(){
+//     anomTimer=null;
+//     const bounds=map.getBounds().toJSON();
+//     $.getJSON('listAnomalies',{'bounds':JSON.stringify(bounds)})
+//     .done(showAnomalies)
+//     .fail(function(a,b,c){
+//         console.error(a);
+//         console.error(b);
+//         console.error(c);
+//     })
+// }
+
 function getAnomalies(){
     anomTimer=null;
-    const bounds=map.getBounds().toJSON();
-    $.getJSON('listAnomalies',{'bounds':JSON.stringify(bounds)})
-    .done(showAnomalies)
-    .fail(function(a,b,c){
-        console.error(a);
-        console.error(b);
-        console.error(c);
+    let anomaliesDiv=$('#anomaliesPlots').empty();
+    $('#volcSelect option').each(function(){
+        const volc=this.value;
+        const args={'volc':volc};
+        const volcID=volc.replace(' ','');
+        let volcDiv=$(`<div id=${volcID}AnomaliesTop class="volcAnomaliesTop">`);
+        let titleDiv=$('<div class=title>')
+        titleDiv.append(volc);
+        titleDiv.append("<br>");
+        titleDiv.append(`<img class="anomalyMap" src="static/img/maps/${volcID}.png">`)
+        volcDiv.append(titleDiv)
+        volcDiv.append(`<div id=${volcID}Anomalies class="volcAnomalies">`)
+        anomaliesDiv.append(volcDiv)
+        $.getJSON('listVolcAnomalies',args)
+        .done(showAnomalies)
     })
 }
 
 function showAnomalies(data){
-    let anomaliesDiv=$('#anomaliesPlots').empty();
-    for( const station in data){
-        let [short, long, id]=data[station];
-        anomaliesDiv.append(createAnomaliesDiv(station,long,short, id));
+    const volc=data['volc'].replace(' ','');
+    const stations=data['stations']
+    const destDiv=$(`#${volc}Anomalies`);
+    for(const station in stations){
+        let [short,long,id]=stations[station]
+        destDiv.append(createAnomaliesDiv(station,long,short,id));
     }
 }
+
+// function showAnomalies(data){
+//     let anomaliesDiv=$('#anomaliesPlots').empty();
+//     for( const station in data){
+//         let [short, long, id]=data[station];
+//         anomaliesDiv.append(createAnomaliesDiv(station,long,short, id));
+//     }
+// }
 
 function setSpecialText() {
     if (menuMode) {

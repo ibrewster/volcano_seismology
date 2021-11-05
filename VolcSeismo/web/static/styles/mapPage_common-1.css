@@ -236,14 +236,26 @@ label {
 }
 
 #anomaliesPlots{
+    z-index:1;
+    background-color:white;
+    overflow-y:auto;
+}
+
+.volcAnomalies{
     display:flex;
+    flex-wrap: wrap;
     flex: 1 1 auto;
     z-index:1;
     background-color: white;
 }
 
+.volcAnomaliesTop div.title{
+    text-align:center;
+    font-weight: bold;
+}
+
 .anomaliesTop{
-    width:600px;
+    width:300px;
     cursor:pointer;
 }
 
@@ -252,17 +264,48 @@ label {
     font-weight: bold;
 }
 
+.volcAnomaliesTop{
+    display:grid;
+    grid-template-columns: auto 1fr;
+    border-bottom:1px solid #C9C9C9;
+    margin-bottom:15px;
+}
+
+div.anomalies {
+    width: 100%;
+    overflow: hidden;
+}
+
+div.anomalies img {
+    width: 100%;
+}
+
+div.anomaliesTop.error{
+    display:none;
+}
+
+div.anomaliesTop.error img {
+    height: 20px;
+}
+
+div.anomalies.hidden {
+    height: 0px;
+}
+
+img.anomalyMap{
+    width:300px;
+}
+
 .tabs{
     display:inline-block;
 }
 
 .tabs button{
     position:relative;
-    bottom: -3px;
-    height:2em;
+    bottom: -4px;
+    height:calc(2em + 2px);
     background-color:whitesmoke;
     border:1px solid #C9C9C9;
-    border-bottom:none;
     border-top-left-radius: 5px;
     border-top-right-radius: 5px;
     vertical-align:bottom;
@@ -273,8 +316,7 @@ label {
 .tabs button.current{
     background-color:white;
     height:calc(2em + 7px);
-    bottom:-4px;
-    border-bottom:1px solid #C9C9C9;
+    border-bottom:none;
     box-shadow: 6px 6px 6px rgba(0, 0, 0, .5);
 
 }
@@ -292,7 +334,7 @@ label {
 }
 
 #content.anomaliestab #mapContainer{
-    min-width:50vw;
+    display:none;
 }
 
 #mapContainer {
@@ -632,29 +674,6 @@ button.downloadData {
     position: absolute;
     top: 5px;
     left: 5px;
-}
-
-div.anomalies {
-    width: 100%;
-    overflow: hidden;
-}
-
-div.anomalies img {
-    width: 100%;
-}
-
-div.anomaliesTop.error{
-    width:auto;
-    margin-left:3px;
-    margin-right:3px;
-}
-
-div.anomaliesTop.error img {
-    height: 20px;
-}
-
-div.anomalies.hidden {
-    height: 0px;
 }
 
 @media only screen and (max-width: 800px) {

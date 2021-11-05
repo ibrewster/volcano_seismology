@@ -589,8 +589,8 @@ FROM
         return graph_data
 
 
-@app.route('/listAnomalies')
-def list_anomalies():
+@app.route('/listRegionAnomalies')
+def list_region_anomalies():
     bounds = json.loads(flask.request.args['bounds'])
     SQL = """SELECT
         name,id
@@ -605,7 +605,6 @@ def list_anomalies():
     ORDER BY name
     """
     with utils.db_cursor() as cursor:
-        print(cursor.mogrify(SQL, bounds))
         cursor.execute(SQL, bounds)
         stations = cursor.fetchall()
 
@@ -617,3 +616,40 @@ def list_anomalies():
         result[station] = [short, long, station_id]
 
     return flask.jsonify(result)
+
+
+@app.route('/listVolcAnomalies')
+def list_volc_anomalies():
+    volc = flask.request.args['volc']
+    SQL = """
+    SELECT
+        name,
+        id
+    FROM
+    (SELECT
+        name,
+        id,
+        (stations.location <-> (SELECT location FROM volcanoes WHERE site=%(volc)s))/1000 as dist
+    FROM
+    stations) s1
+    WHERE dist<=(SELECT radius FROM volcanoes WHERE site=%(volc)s)
+    AND EXISTS
+    (SELECT 1
+	FROM last_data
+	WHERE station=s1.id
+        AND lastdata>now()-'10 years'::interval
+	LIMIT 1)
+    """
+    with utils.db_cursor() as cursor:
+        cursor.execute(SQL, {'volc': volc})
+        stations = cursor.fetchall()
+
+    result = {}
+    for station in stations:
+        station, station_id = station
+        short = f"static/img/anomalies/{station}-short.png"
+        long = f"static/img/anomalies/{station}-long.png"
+        result[station] = [short, long, station_id]
+
+    return flask.jsonify({'volc': volc, 'stations': result})
+
