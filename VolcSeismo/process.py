@@ -46,7 +46,8 @@ def run():
             try:
                 loc = {station: stations[station]}
             except KeyError:
-                pass  # No metadata for this station, can't be processed.
+                print(f"Can't get info for station: {station}. Skipping.")
+                continue  # No metadata for this station, can't be processed.
 
             dtfrom = UTCDateTime(dtfrom)
             dtto = UTCDateTime(dtto)
