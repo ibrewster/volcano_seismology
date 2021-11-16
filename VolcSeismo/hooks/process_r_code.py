@@ -30,7 +30,6 @@ def run(data, station, metadata):
 
 
 def save_to_db(data, station, channel = 'BHZ'):
-    from VolcSeismo import config
     if len(data) == 0:
         print("NOT saving result for", station, channel, "No data provided")
         return
@@ -43,21 +42,8 @@ def save_to_db(data, station, channel = 'BHZ'):
     cursor.execute("SELECT id FROM stations WHERE name=%s", (station, ))
     sta_id = cursor.fetchone()
     if sta_id is None:
-        sta_info = config.stations[station]
-        sta_args = {'name': station,
-                    'latitude': sta_info['latitude'],
-                    'longitude': sta_info['longitude']}
-        STA_SQL = """INSERT INTO stations
-        (name, latitude,longitude,site)
-        VALUES (%(name)s, %(latitude)s, %(longitude)s,'Unspecified')
-        RETURNING id"""
-        cursor.execute(STA_SQL, sta_args)
-        cursor.connection.commit()
-        sta_id = cursor.fetchone()
-
-        if sta_id is None:
-            print("Unable to store result for", station, ". No station id found.")
-            return
+        print("Unable to store result for", station, ". No station id found.")
+        return
 
     print("Saving result for", station, channel)
     data.replace('', '\\N', inplace = True)
