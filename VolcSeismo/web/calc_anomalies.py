@@ -35,6 +35,18 @@ if __name__ == "__main__":
                                password = db_config['password'],
                                database = db_config['database'])
     cursor = db_conn.cursor()
+
+    # Alternate SELECT not using last_data. *slightly* slower (not enough to matter),
+    # But doesn't rely on last_data being up-to-date
+#     """SELECT name,channels FROM
+# (SELECT
+# 	name,
+# 	channels,
+# 	(SELECT true FROM data WHERE station=stations.id LIMIT 1) as has_data
+# FROM stations
+# INNER JOIN station_channels ON station_channels.station=stations.id) s1
+# WHERE s1.has_data=true"""
+
     cursor.execute("""SELECT
 	name, channels
 FROM stations
@@ -44,7 +56,7 @@ WHERE EXISTS (SELECT 1
 	FROM last_data
 	WHERE station=stations.id
 	LIMIT 1);
-                      """)
+        """)
 
     results = []
     pool = ThreadPool(20)

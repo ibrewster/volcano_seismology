@@ -19,11 +19,19 @@ except ImportError:
 from obspy import UTCDateTime
 
 
-def run():
+def run(ENDTIME = None):
     print("running")
+    check_missed = True
 
     # Set endtime to the closest 10 minute mark prior to current time
-    ENDTIME = UTCDateTime()
+    if ENDTIME is None:
+        # Don't want to set this default in the function definition for fear of it being
+        # called at definition time rather than runtime. Not sure if this is a valid
+        # concern or not (I know it is for something like a dictionary...)
+        ENDTIME = UTCDateTime()
+    else:
+        check_missed = False  # if specifying an end time, just run that one
+
     ENDTIME = ENDTIME.replace(minute=ENDTIME.minute - (ENDTIME.minute % 10),
                               second=0,
                               microsecond=0)
@@ -36,26 +44,27 @@ def run():
     cache_dir = os.path.join(os.path.dirname(__file__), 'cache')
     os.makedirs(cache_dir, exist_ok = True)
     cache_db = os.path.join(cache_dir, 'cache.db')
-    with sqlite3.connect(cache_db) as conn:
-        cur = conn.cursor()
-        # Make sure the "missed" table exists
-        cur.execute("CREATE TABLE IF NOT EXISTS missed (station TEXT, dtfrom TEXT, dtto TEXT, UNIQUE (station, dtfrom, dtto))")
-        cur.execute("SELECT station,dtfrom,dtto FROM missed ORDER BY dtto DESC")  # May be empty
+    if check_missed:
+        with sqlite3.connect(cache_db) as conn:
+            cur = conn.cursor()
+            # Make sure the "missed" table exists
+            cur.execute("CREATE TABLE IF NOT EXISTS missed (station TEXT, dtfrom TEXT, dtto TEXT, UNIQUE (station, dtfrom, dtto))")
+            cur.execute("SELECT station,dtfrom,dtto FROM missed ORDER BY dtto DESC")  # May be empty
 
-        for station, dtfrom, dtto in cur:
-            try:
-                loc = {station: stations[station]}
-            except KeyError:
-                print(f"Can't get info for station: {station}. Skipping.")
-                continue  # No metadata for this station, can't be processed.
+            for station, dtfrom, dtto in cur:
+                try:
+                    loc = {station: stations[station]}
+                except KeyError:
+                    print(f"Can't get info for station: {station}. Skipping.")
+                    continue  # No metadata for this station, can't be processed.
 
-            dtfrom = UTCDateTime(dtfrom)
-            dtto = UTCDateTime(dtto)
-            if (UTCDateTime() - dtfrom) / 60 / 60 > 2:
-                continue  # Don't try to go back more than two hours
-            gen_times.append((dtfrom, dtto, loc))
+                dtfrom = UTCDateTime(dtfrom)
+                dtto = UTCDateTime(dtto)
+                if (UTCDateTime() - dtfrom) / 60 / 60 > 2:
+                    continue  # Don't try to go back more than two hours
+                gen_times.append((dtfrom, dtto, loc))
 
-        cur.execute("DELETE FROM missed")  # Potential race condition between SELECT and DELETE?
+            cur.execute("DELETE FROM missed")  # Potential race condition between SELECT and DELETE?
 
     # Run the hook scripts
     procs = []
