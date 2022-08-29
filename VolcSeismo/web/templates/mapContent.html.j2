@@ -2,43 +2,52 @@
     <img src='static/img/Hamburger_icon.svg' class="menu">
     <div id="locations">
         <div id=locsLeft class="locsDiv">
-            <select id="volcSelect">
-		    {% for loc in volcOrder %}
-		    {% set data=locations[loc] %}
-		        <option data-lat='{{data["latitude"]}}' data-lon="{{data[ 'longitude']}}" data-zoom="{{data[ 'zoom']}}"
-		    data-site="{{loc | replace(' ',' ')}}">
-                    {{loc}}
-                </option>
-            {%endfor%}
-            </select>
-
             <div id="plotTabs" class="tabs">
                 <button data-target="anomaliesPlots" class="current">
                     Anomalies Graphs
-                </button><button id="stationsTab" data-target="None">
-                    Station Graphs
+                </button><button id="stationsTab" data-target="featuresTab">
+                    Seismic Features
                 </button>
             </div>
-
-            <button id="download">Download Images</button>
         </div>
         <div id=locsRight class="locsDiv">
         </div>
     </div>
 </div>
-<div id="content" class="anomaliestab">
-    <div id="mapContainer" class="noPrint">
-        <div id="options">
-            <span id="instrText">Hold shift while clicking to graph multiple stations</span>
-        </div>
 
-        <div id=mapWrapper>
-            <div id="map">
+
+<div id="featuresTab" class="tabView" style="display:none;">
+    <div id="mapHeader">
+        <select id="volcSelect">
+            {% for loc in volcOrder %}
+            {% set data=locations[loc] %}
+            <option data-lat='{{data["latitude"]}}' data-lon="{{data[ 'longitude']}}" data-zoom="{{data[ 'zoom']}}"
+            data-site="{{loc | replace(' ',' ')}}">
+            {{loc}}
+            </option>
+            {%endfor%}
+        </select>
+        <button id="download">Download Images</button>
+    </div>
+
+    <div id="content">
+        <div id="mapContainer" class="noPrint">
+            <div id="options">
+                <span id="instrText">Hold shift while clicking to graph multiple stations</span>
+            </div>
+
+            <div id=mapWrapper>
+                <div id="map">
+                </div>
             </div>
         </div>
     </div>
 
-    <div id="anomaliesPlots" class="tabView">
-    </div>
+</div>
 
+
+<div id="anomaliesPlots" class="tabView">
+</div>
+
+<div id="eventPlots" class="tabView">
 </div>

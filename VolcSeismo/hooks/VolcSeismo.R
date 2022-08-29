@@ -23,11 +23,11 @@ runAnalysis <- function(time, data){
     sd_freq_max30=c();sd_freq_max40=c();sd_freq_max50=c();sd_freq_max60=c();sd_freq_max70=c();
     sd_freq_max80=c();sd_freq_max90=c();sd_freq_max100=c();
     sd_ssa_max10=c();sd_ssa_max20=c();sd_ssa_max30=c();sd_ssa_max40=c();sd_ssa_max50=c();sd_ssa_max60=c();
-    sd_ssa_max70=c();sd_ssa_max80=c();sd_ssa_max90=c();sd_ssa_max100=c();sd_rsam=c()
+    sd_ssa_max70=c();sd_ssa_max80=c();sd_ssa_max90=c();sd_ssa_max100=c();sd_rsam=c();s2n=c();
     time_parameters=c()
 
 
-    steps=50  #50 to have 1s sliding window 
+    steps=50  #50 to have 1s sliding window
     for (j in seq(window,length(data),steps)){
     #for (j in window){
     aux_signal=data[(j-window+1):j]    #backward 1s-sliding windows of 10 s
@@ -38,7 +38,7 @@ runAnalysis <- function(time, data){
     #plot_spectrum(data=spectrum, unit="linear")
     spectrum[,1]=spectrum[,1][order(spectrum[,2],decreasing = TRUE)]    #order the amplitudes in decreasing order
     spectrum[,2]=spectrum[,2][order(spectrum[,2],decreasing = TRUE)]    #order the amplitudes in decreasing order
-    
+
     freq_max1=append(freq_max1,spectrum[1,1])
     freq_max10=append(freq_max10,median(spectrum[1:10,1]))
     freq_max20=append(freq_max20,median(spectrum[1:20,1]))
@@ -51,26 +51,27 @@ runAnalysis <- function(time, data){
     sd_freq_max30=append(sd_freq_max30,sd(spectrum[1:30,1]))
     sd_freq_max40=append(sd_freq_max40,sd(spectrum[1:40,1]))
     sd_freq_max50=append(sd_freq_max50,sd(spectrum[1:50,1]))
-        
+
     ssa_max1=append(ssa_max1,spectrum[1,2])
     ssa_max10=append(ssa_max10,median(spectrum[1:10,2]))
     ssa_max20=append(ssa_max20,median(spectrum[1:20,2]))
     ssa_max30=append(ssa_max30,median(spectrum[1:30,2]))
     ssa_max40=append(ssa_max40,median(spectrum[1:40,2]))
     ssa_max50=append(ssa_max50,median(spectrum[1:50,2]))
-        
+
     sd_ssa_max10=append(sd_ssa_max10,sd(spectrum[1:10,2]))
     sd_ssa_max20=append(sd_ssa_max20,sd(spectrum[1:20,2]))
     sd_ssa_max30=append(sd_ssa_max30,sd(spectrum[1:30,2]))
     sd_ssa_max40=append(sd_ssa_max40,sd(spectrum[1:40,2]))
     sd_ssa_max50=append(sd_ssa_max50,sd(spectrum[1:50,2]))
-        
+
     rsam=append(rsam,median(abs(aux_signal)))
     sd_rsam=append(sd_rsam,sd(abs(aux_signal)))
-        
+    s2n=append(s2n,mean(abs(aux_signal))/mean(abs(data)))
+
     time_parameters=append(time_parameters,substr(time[j],1,23))
     }
-        
-    matrix_of_features=as.data.frame(cbind(as.character(time_parameters),freq_max1,freq_max10,freq_max20,freq_max30,freq_max40,freq_max50,sd_freq_max10,sd_freq_max20,sd_freq_max30,sd_freq_max40,sd_freq_max50,ssa_max1,ssa_max10,ssa_max20,ssa_max30,ssa_max40,ssa_max50,sd_ssa_max10,sd_ssa_max20,sd_ssa_max30,sd_ssa_max40,sd_ssa_max50,rsam,sd_rsam))
+
+    matrix_of_features=as.data.frame(cbind(as.character(time_parameters),freq_max1,freq_max10,freq_max20,freq_max30,freq_max40,freq_max50,sd_freq_max10,sd_freq_max20,sd_freq_max30,sd_freq_max40,sd_freq_max50,ssa_max1,ssa_max10,ssa_max20,ssa_max30,ssa_max40,ssa_max50,sd_ssa_max10,sd_ssa_max20,sd_ssa_max30,sd_ssa_max40,sd_ssa_max50,rsam,sd_rsam,s2n))
     return(matrix_of_features)
 }

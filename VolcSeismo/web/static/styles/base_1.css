@@ -51,3 +51,9 @@ body {
 .capitalize {
     text-transform: capitalize;
 }
+
+.tabView {
+    padding-top:7px;
+    z-index:1;
+    background-color:white;
+}

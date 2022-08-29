@@ -302,8 +302,8 @@ img.anomalyMap{
 
 .tabs button{
     position:relative;
-    bottom: -4px;
-    height:calc(2em + 2px);
+    bottom: -3px;
+    padding-top:5px;
     background-color:whitesmoke;
     border:1px solid #C9C9C9;
     border-top-left-radius: 5px;
@@ -315,7 +315,7 @@ img.anomalyMap{
 
 .tabs button.current{
     background-color:white;
-    height:calc(2em + 7px);
+    padding-bottom:10px;
     border-bottom:none;
     box-shadow: 6px 6px 6px rgba(0, 0, 0, .5);
 
@@ -674,6 +674,11 @@ button.downloadData {
     position: absolute;
     top: 5px;
     left: 5px;
+}
+
+#featuresTab{
+    display:grid;
+    grid-template-rows:auto 1fr;
 }
 
 @media only screen and (max-width: 800px) {
