@@ -93,10 +93,10 @@ def run(ENDTIME = None):
                     future = executor.submit(_process_data, loc,
                                              loc_info, start, end)
                     procs.append((loc, start, end, future))
-#                     ##################DEBUG################
-#                     result = _process_data(loc, loc_info, start, end)
-#                     procs.append((loc, start, end, result))
-#                     #######################################
+                    ##################DEBUG################
+                    # result = _process_data(loc, loc_info, start, end)
+                    # procs.append((loc, start, end, result))
+                    #######################################
 #             ############DEBUG###############
 #             break
 #             #################################
@@ -109,9 +109,9 @@ def run(ENDTIME = None):
     (?,?,?)
      """
 #     ##################DEBUG########################
-#     for station, dtstart, dtend, result in procs:
-#         print(station, dtstart, dtend, result)
-#     return
+    # for station, dtstart, dtend, result in procs:
+        # print(station, dtstart, dtend, result)
+    # return
 #     ###############################################
 
     for station, dtstart, dtend, proc in procs:
@@ -140,7 +140,12 @@ def _process_data(STA, sta_dict, STARTTIME, ENDTIME):
     CHAN = sta_dict.get('CHAN', 'BHZ')
     NET = sta_dict.get('NET', 'AV')
 
-    stream, waveform_times = load(NET, STA, '--', CHAN, STARTTIME, ENDTIME)
+    try:
+        stream, waveform_times = load(NET, STA, '--', CHAN, STARTTIME, ENDTIME)
+    except TypeError:
+        logging.warning(f"Unable to retrieve data for station {STA}, {STARTTIME} to {ENDTIME}")
+        return True
+    
     if stream is None or waveform_times is None:
         logging.warning(f"No data retrieved for station {STA}, {STARTTIME} to {ENDTIME}")
         return True  # missed this station/time

@@ -1,5 +1,4 @@
 #Load libraries and data
-knitr::opts_chunk$set(echo = TRUE)
 suppressMessages(library(dplyr))
 suppressMessages(library(chron))
 suppressMessages(library(e1071))
@@ -11,7 +10,7 @@ suppressMessages(library(randomForest))
 suppressMessages(library(RSEIS))
 suppressMessages(library(gatepoints))
 
-runAnalysis <- function(time, data){
+runAnalysis <- function(time, data, station, chan, script_dir){
     time=as.POSIXct(time,format = "%Y-%m-%dT%H:%M:%S")
     #plot(time,data,las=1,type='l')
 
@@ -72,6 +71,166 @@ runAnalysis <- function(time, data){
     time_parameters=append(time_parameters,substr(time[j],1,23))
     }
 
-    matrix_of_features=as.data.frame(cbind(as.character(time_parameters),freq_max1,freq_max10,freq_max20,freq_max30,freq_max40,freq_max50,sd_freq_max10,sd_freq_max20,sd_freq_max30,sd_freq_max40,sd_freq_max50,ssa_max1,ssa_max10,ssa_max20,ssa_max30,ssa_max40,ssa_max50,sd_ssa_max10,sd_ssa_max20,sd_ssa_max30,sd_ssa_max40,sd_ssa_max50,rsam,sd_rsam,s2n))
+    V1 <- as.character(time_parameters)
+    matrix_of_features=as.data.frame(cbind.data.frame(V1,freq_max1,freq_max10,freq_max20,freq_max30,freq_max40,freq_max50,sd_freq_max10,sd_freq_max20,sd_freq_max30,sd_freq_max40,sd_freq_max50,ssa_max1,ssa_max10,ssa_max20,ssa_max30,ssa_max40,ssa_max50,sd_ssa_max10,sd_ssa_max20,sd_ssa_max30,sd_ssa_max40,sd_ssa_max50,rsam,sd_rsam,s2n))
+    
     return(matrix_of_features)
+}
+
+genEventGraphs1 <- function(matrix_of_features, station, script_file){
+    SCRIPT_DIRECTORY <- dirname(script_file)
+    ## SCRIPT TO SEND TO ISRAEL (26 AUGUST 2022) - EXTRACTION OF EVENTS
+    matrix_of_features=na.omit(as.data.frame((matrix_of_features)))  #remove rows with NA
+
+    # NORMALIZATION OF THE S2N RATIO
+    s2n_ratio=as.numeric(matrix_of_features[,26])/mean(as.numeric(matrix_of_features[,26]),na.rm = FALSE)
+    matrix_of_features=cbind(matrix_of_features,s2n_ratio)
+    
+    # CALCULATES PREDICTIONS FROM EACH MACHINE LEARNING MODEL PREVIOUSLY TRAINED. THE MODELS NEED TO BE SAVED IN THE SAME FOLDER AS THIS SCRIPT  
+    temp = list.files(path=SCRIPT_DIRECTORY, pattern="*.rda")
+    for(ensemble in 1:length(temp)){
+        model_file <- paste(SCRIPT_DIRECTORY, temp[ensemble], sep='/')
+        load(model_file)
+        aux=(predict(rf,matrix_of_features,data=admitg,type="raw"))
+        aux[1]=0; aux[length(aux)]=0
+        #this is introduced to impose that the first element is always 0; otherwise the duration of the events detected is negative 
+        matrix_of_features=cbind(matrix_of_features,aux)
+    }
+    matrix_of_features_with_predictions=matrix_of_features
+    events = genEventGraphs2(matrix_of_features_with_predictions, station, script_file)
+    return(as.data.frame(events))
+}
+
+genEventGraphs2 <- function(matrix_of_features, station, script_file){
+    # EXTRACT INITIATION, ENDING, AND DURATION OF THE EVENTS FROM THE PREDICTIONS
+    events=c()
+    for(j in 28:length(matrix_of_features)){
+      ensemble=j-27
+      fre_event=c()
+      ampl_event=c()
+      aux=matrix_of_features[,j]
+      if(length(which(diff(as.numeric(aux))==1))>0){
+        begin_event=matrix_of_features[which(diff(as.numeric(aux))==1),1]
+        end_event=matrix_of_features[which(diff(as.numeric(aux))==-1),1]
+        duration_event=as.numeric(difftime(end_event, begin_event, units = "secs"))
+
+        for(i in 1:length(begin_event)){
+          a=which(matrix_of_features[,1]==begin_event[i])
+          b=which(matrix_of_features[,1]==end_event[i])
+          fre_event=append(fre_event,mean(matrix_of_features[a:b,2]))
+          ampl_event=append(ampl_event,mean(matrix_of_features[a:b,24]))
+        }
+      }
+      else{begin_event=NA;end_event=NA;duration_event=NA;ampl_event=NA;fre_event=NA}
+      events_ensemble=cbind(ensemble,begin_event,end_event,duration_event,ampl_event,fre_event)
+      events=rbind(events,events_ensemble)
+    }
+    return(events)
+}
+
+
+genEventGraphs <- function(matrix_of_features, station, script_file){
+    print("Making Predictions")
+    SCRIPT_DIRECTORY <- dirname(script_file)
+    matrix_of_features=na.omit(matrix_of_features)  #remove rows with NA
+    
+    # NORMALIZATION OF THE S2N RATIO
+    s2n_ratio=as.numeric(matrix_of_features[,26])/mean(as.numeric(matrix_of_features[,26]), na.rm = FALSE)
+    matrix_of_features=cbind(matrix_of_features,s2n_ratio)
+    
+
+    # CALCULATES PREDICTIONS FROM EACH MACHINE LEARNING MODEL PREVIOUSLY TRAINED. THE MODELS NEED TO BE SAVED IN THE SAME FOLDER AS THIS SCRIPT  
+    temp = list.files(path=SCRIPT_DIRECTORY, pattern="*.rda")
+    for(ensemble in 1:length(temp)){
+        model_file <- paste(SCRIPT_DIRECTORY, temp[ensemble], sep='/')
+        load(model_file)
+        aux=(predict(rf,matrix_of_features,data=admitg,type="raw"))
+        aux[1]=0; aux[length(aux)]=0
+        #this is introduced to impose that the first element is always 0; otherwise the duration of the events detected is negative 
+        matrix_of_features=cbind(matrix_of_features,aux)
+    }
+    
+    # Setup for plot creation
+    filename <- paste(
+        SCRIPT_DIRECTORY,
+        '../web/static/img/events',
+        station,
+        sep = "/"
+    )
+    
+    filename <- paste(filename,'.png',sep="")
+    filename <- normalizePath(filename)
+
+    png(file=filename, width=7.5, height = 4, units="in", res=600)
+    
+    plot_created <- FALSE
+    plot_colors <- c("black","red","blue","green")
+    # EXTRACT INITIATION, ENDING, AND DURATION OF THE EVENTS FROM THE PREDICTIONS
+    for(j in 27:length(matrix_of_features)){
+        ensemble=j-26
+        fre_event=c();ampl_event=c()
+        aux=matrix_of_features[,j]
+                
+        if(length(which(diff(as.numeric(aux))==1))>0){
+            begin_event=matrix_of_features[which(diff(as.numeric(aux))==1),1]
+            end_event=matrix_of_features[which(diff(as.numeric(aux))==-1),1]
+            duration_event=as.numeric(difftime(end_event, begin_event, units = "secs"))
+        }
+        else{
+            next
+        }
+        
+        for(i in 1:length(begin_event)){
+            print(i*100/length(begin_event))
+            a=which(matrix_of_features[,1]==begin_event[i])
+            b=which(matrix_of_features[,1]==end_event[i])
+            fre_event=append(fre_event,mean(matrix_of_features[a:b,2]))
+            ampl_event=append(ampl_event,mean(matrix_of_features[a:b,28]))
+        }
+        
+        date_events=cbind(begin_event,end_event,duration_event,ampl_event,fre_event)
+        
+        print("***BEGINING GRAPH GENERATION***")
+        print("FILENAME:")
+        print(filename)
+
+        # SAVES THE RESULTS FROM EACH MODEL
+        # write.csv(date_events, file = paste(filename_output,"_model_",ensemble,".csv",sep=""))
+        days=unique(substr(date_events[,2],1,10))
+        print("Days:")
+        print(days)
+        print("____")
+        number_of_events_per_day=c()
+        for(i in 1:length(days)){ 
+            number_of_events_per_day[i]=length(which(substr(date_events[,2],1,10)==days[i]))
+        }
+        
+        line_color <- plot_colors[ensemble]
+        if(!plot_created){
+            print("Creating plot from")
+            print(number_of_events_per_day)
+            plot_created <- TRUE
+            plot(as.POSIXct(days),number_of_events_per_day,cex.lab=1.1,cex.axis=1.1,col="black",las=1,,type='l',xlab="Date",ylab="Number of events per day")
+        }else{
+            print("Adding line")
+            print(number_of_events_per_day)
+            lines(as.POSIXct(days),number_of_events_per_day,cex.lab=1.1,cex.axis=1.1,col="blue",las=1,,type='l',xlab="Date",ylab="Number of events per day")
+        }
+    }
+    dev.off()
+    #if(found_events){
+        #print("^^^^^^^^^EVENTS FOUND ON FINAL LOOP. GENERATING GRAPHS^^^^^^^^^")
+
+        #days=unique(substr(date_events[,2],1,10))
+        #number_of_events_per_day=c()
+        #for(i in 1:length(days)){ 
+            #number_of_events_per_day[i]=length(which(substr(date_events[,2],1,10)==days[i]))
+        #}
+        
+
+        
+        #plot(as.POSIXct(days2),number_of_events_per_day_model2,cex.lab=1.1,cex.axis=1.1,col="black",las=1,,type='l',xlab="Date",ylab="Number of events per day")
+        #lines(as.POSIXct(days3),number_of_events_per_day_model3,cex.lab=1.1,cex.axis=1.1,col="red",las=1,,type='l',xlab="Date",ylab="Number of events per day")
+        #lines(as.POSIXct(days4),number_of_events_per_day_model4,cex.lab=1.1,cex.axis=1.1,col="blue",las=1,,type='l',xlab="Date",ylab="Number of events per day")
+    #}
 }

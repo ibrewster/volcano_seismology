@@ -21,13 +21,33 @@ def run(data, station, metadata):
     script_path = os.path.join(os.path.dirname(__file__), 'VolcSeismo.R')
     base.source(script_path)
     r_func = robjects.globalenv['runAnalysis']
+    graph_gen = robjects.globalenv['genEventGraphs1']
     with localconverter(robjects.default_converter + pandas2ri.converter):
         for chan in ('Z', 'E', 'N'):
             if metadata[chan]:
-                result = r_func(data['time'], data[chan])
-                save_to_db(result, station, metadata[chan])
-    return result
+                try:
+                    features = r_func(data['time'], data[chan], station, chan, script_path)
+                except:
+                    continue
+                
+                if chan == 'Z':
+                    try:
+                        events = graph_gen(features, station, script_path)
+                    except:
+                        continue
+                    # Remove any NaN rows
+                    events.dropna(subset = ['begin_event','end_event', 'duration_event'],
+                                  inplace = True)
+                    if not events.empty:
+                        save_events(events, station, metadata[chan])
+                    
+                #save_to_db(features, station, metadata[chan])
+    return features
 
+
+def save_events(events, station, channel):
+    print(f"Saving events for {station}, {channel}")
+    print(events)
 
 def save_to_db(data, station, channel = 'BHZ'):
     if len(data) == 0:
@@ -50,7 +70,7 @@ def save_to_db(data, station, channel = 'BHZ'):
     sta_id = sta_id * len(data)
     data['station'] = sta_id
     data['channel'] = channel
-    data.rename(columns = {'V1': 'datetime'}, inplace = True)
+    data.rename(columns = {'V1': 'datetime', 'as.character(time_parameters)': 'datetime'}, inplace = True)
     data['datetime'] = pandas.to_datetime(data['datetime'],
                                           infer_datetime_format = True,
                                           utc = True).astype('datetime64[ns, UTC]')
