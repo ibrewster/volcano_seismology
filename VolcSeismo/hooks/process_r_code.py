@@ -99,9 +99,12 @@ def save_events(events, station, channel):
     buffer = StringIO()
     events.to_csv(buffer, index = False, header = False)
     buffer.seek(0)
+    print(f"Running copy for station {station}")
     cursor.copy_from(buffer, 'events', sep = ',', columns = events.columns)
 
     cursor.connection.commit()
+    print(f"Finished insert for station {station}")
+
     cursor.close()
 
 
