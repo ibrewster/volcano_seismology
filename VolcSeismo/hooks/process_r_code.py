@@ -43,7 +43,7 @@ def run(data, station, metadata):
                         #plot_results = graph_events_day(events, station, script_path)
                         save_events(events, station, metadata[chan])
 
-                #save_to_db(features, station, metadata[chan])
+                save_to_db(features, station, metadata[chan])
     return features
 
 
