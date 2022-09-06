@@ -114,7 +114,7 @@ def save_to_db(data, station, channel = 'BHZ'):
         print("Unable to store result for", station, ". No station id found.")
         return
 
-    conn = cursor.connection()
+    conn = cursor.connection
 
     print("Saving result for", station, channel)
     data.replace('', '\\N', inplace = True)
