@@ -94,6 +94,8 @@ def save_events(events, station, channel):
     """
     t_start = events['event_begin'].min()
     t_stop = events['event_begin'].max()
+    print(f"Running DELETE for station {station}")
+    print(cursor.mogrify(DEL_SQL, (sta_id, channel, t_start, t_stop)))
     cursor.execute(DEL_SQL, (sta_id, channel, t_start, t_stop))
 
     buffer = StringIO()
