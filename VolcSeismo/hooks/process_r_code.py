@@ -66,6 +66,7 @@ def init_db_connection(station):
 
 def save_events(events, station, channel):
     print(f"Saving {len(events)} events for {station}, {channel}")
+    print(events)
     cursor, sta_id = init_db_connection(station)
 
     events['station'] = sta_id
