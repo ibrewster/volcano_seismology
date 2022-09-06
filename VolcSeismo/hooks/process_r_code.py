@@ -43,7 +43,7 @@ def run(data, station, metadata):
                         #plot_results = graph_events_day(events, station, script_path)
                         save_events(events, station, metadata[chan])
 
-                save_to_db(features, station, metadata[chan])
+                #save_to_db(features, station, metadata[chan])
     return features
 
 
@@ -77,7 +77,7 @@ def save_events(events, station, channel):
                              'fre_event': 'frequency', },
                   inplace = True)
 
-    events['ensemble'] = events['ensemble'].asttype(int)
+    events['ensemble'] = events['ensemble'].astype(int)
     events['event_begin'] = pandas.to_datetime(events['event_begin'],
                                                infer_datetime_format = True,
                                                utc = True).astype('datetime64[ns, UTC]')
@@ -94,18 +94,15 @@ def save_events(events, station, channel):
     """
     t_start = events['event_begin'].min()
     t_stop = events['event_begin'].max()
-    print(f"Running DELETE for station {station}")
-    print(cursor.mogrify(DEL_SQL, (sta_id, channel, t_start, t_stop)))
+
     cursor.execute(DEL_SQL, (sta_id, channel, t_start, t_stop))
 
     buffer = StringIO()
     events.to_csv(buffer, index = False, header = False)
     buffer.seek(0)
-    print(f"Running copy for station {station}")
     cursor.copy_from(buffer, 'events', sep = ',', columns = events.columns)
 
     cursor.connection.commit()
-    print(f"Finished insert for station {station}")
 
     cursor.close()
 
