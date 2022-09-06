@@ -77,6 +77,7 @@ def save_events(events, station, channel):
                              'fre_event': 'frequency', },
                   inplace = True)
 
+    events['ensemble'] = events['ensemble'].asttype(int)
     events['event_begin'] = pandas.to_datetime(events['event_begin'],
                                                infer_datetime_format = True,
                                                utc = True).astype('datetime64[ns, UTC]')
