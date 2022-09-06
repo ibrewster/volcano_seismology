@@ -21,7 +21,8 @@ def run(data, station, metadata):
     script_path = os.path.join(os.path.dirname(__file__), 'VolcSeismo.R')
     base.source(script_path)
     r_func = robjects.globalenv['runAnalysis']
-    graph_gen = robjects.globalenv['genEventGraphs1']
+    gen_event_data = robjects.globalenv['genEventGraphs1']
+    graph_events_day = robjects.globalenv['EventsPerDay']
     with localconverter(robjects.default_converter + pandas2ri.converter):
         for chan in ('Z', 'E', 'N'):
             if metadata[chan]:
@@ -29,48 +30,100 @@ def run(data, station, metadata):
                     features = r_func(data['time'], data[chan], station, chan, script_path)
                 except:
                     continue
-                
+
                 if chan == 'Z':
                     try:
-                        events = graph_gen(features, station, script_path)
+                        events = gen_event_data(features, station, script_path)
                     except:
                         continue
                     # Remove any NaN rows
-                    events.dropna(subset = ['begin_event','end_event', 'duration_event'],
+                    events.dropna(subset = ['begin_event', 'end_event', 'duration_event'],
                                   inplace = True)
                     if not events.empty:
+                        #plot_results = graph_events_day(events, station, script_path)
                         save_events(events, station, metadata[chan])
-                    
-                #save_to_db(features, station, metadata[chan])
+
+                save_to_db(features, station, metadata[chan])
     return features
 
 
+def init_db_connection(station):
+    conn = psycopg2.connect(host = VARS.DB_HOST,
+                            database = 'volcano_seismology',
+                            user = VARS.DB_USER,
+                            password = VARS.DB_PASSWORD)
+    cursor = conn.cursor()
+    # Set DB to UTC so we don't have time zone issues
+    cursor.execute("SET timezone = 'UTC'")
+
+    cursor.execute("SELECT id FROM stations WHERE name=%s", (station, ))
+    sta_id = cursor.fetchone()
+    if sta_id is None:
+        return (None, None)
+
+    return (cursor, sta_id[0])
+
+
 def save_events(events, station, channel):
-    print(f"Saving events for {station}, {channel}")
-    print(events)
+    print(f"Saving {len(events)} events for {station}, {channel}")
+    cursor, sta_id = init_db_connection(station)
+
+    events['station'] = sta_id
+    events['channel'] = channel
+    events.rename(columns = {'begin_event': 'event_begin',
+                             'end_event': 'event_end',
+                             'duration_event': 'duration',
+                             'ampl_event': 'ampl',
+                             'fre_event': 'frequency', },
+                  inplace = True)
+
+    events['event_begin'] = pandas.to_datetime(events['event_begin'],
+                                               infer_datetime_format = True,
+                                               utc = True).astype('datetime64[ns, UTC]')
+    events['event_end'] = pandas.to_datetime(events['event_end'],
+                                             infer_datetime_format = True,
+                                             utc = True).astype('datetime64[ns, UTC]')
+
+    DEL_SQL = """
+    DELETE FROM events
+    WHERE station=%s
+    AND channel=%s
+    AND event_begin>=%s
+    AND event_begin<=%s
+    """
+    t_start = events['event_begin'].min()
+    t_stop = events['event_begin'].max()
+    cursor.execute(DEL_SQL, (sta_id, channel, t_start, t_stop))
+
+    buffer = StringIO()
+    events.to_csv(buffer, index = False, header = False)
+    buffer.seek(0)
+    cursor.copy_from(buffer, 'events', sep = ',', columns = events.columns)
+
+    cursor.connection.commit()
+    cursor.close()
+
 
 def save_to_db(data, station, channel = 'BHZ'):
     if len(data) == 0:
         print("NOT saving result for", station, channel, "No data provided")
         return
 
-    conn = psycopg2.connect(host = VARS.DB_HOST,
-                            database = 'volcano_seismology',
-                            user = VARS.DB_USER,
-                            password = VARS.DB_PASSWORD)
-    cursor = conn.cursor()
-    cursor.execute("SELECT id FROM stations WHERE name=%s", (station, ))
-    sta_id = cursor.fetchone()
-    if sta_id is None:
+    cursor, sta_id = init_db_connection(station)
+    if cursor is None or sta_id is None:
         print("Unable to store result for", station, ". No station id found.")
         return
+
+    conn = cursor.connection()
 
     print("Saving result for", station, channel)
     data.replace('', '\\N', inplace = True)
     sta_id = sta_id * len(data)
     data['station'] = sta_id
     data['channel'] = channel
-    data.rename(columns = {'V1': 'datetime', 'as.character(time_parameters)': 'datetime'}, inplace = True)
+    data.rename(columns = {'V1': 'datetime',
+                           'as.character(time_parameters)': 'datetime'},
+                inplace = True)
     data['datetime'] = pandas.to_datetime(data['datetime'],
                                           infer_datetime_format = True,
                                           utc = True).astype('datetime64[ns, UTC]')
@@ -83,9 +136,6 @@ def save_to_db(data, station, channel = 'BHZ'):
         raise
 
     t_stop = data.datetime.max()
-
-    # Set DB to UTC so we don't have time zone issues
-    cursor.execute("SET timezone = 'UTC'")
 
     # Delete any records covered by this run
     DEL_SQL = """
