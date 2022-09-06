@@ -118,7 +118,6 @@ def save_to_db(data, station, channel = 'BHZ'):
 
     print("Saving result for", station, channel)
     data.replace('', '\\N', inplace = True)
-    sta_id = sta_id * len(data)
     data['station'] = sta_id
     data['channel'] = channel
     data.rename(columns = {'V1': 'datetime',
@@ -145,7 +144,7 @@ def save_to_db(data, station, channel = 'BHZ'):
     AND datetime>=%s
     AND datetime<=%s
     """
-    cursor.execute(DEL_SQL, (sta_id[0], channel, t_start, t_stop))
+    cursor.execute(DEL_SQL, (sta_id, channel, t_start, t_stop))
 
     buffer = StringIO()
     # Drop any duplicate values so we can do an insert
