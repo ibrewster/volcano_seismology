@@ -39,6 +39,9 @@ def run(data, station, metadata):
                     # Remove any NaN rows
                     events.dropna(subset = ['begin_event', 'end_event', 'duration_event'],
                                   inplace = True)
+                    # Drop any rows with the "filler" value
+                    events.drop(events[events['begin_event']==-2147483648].index, inplace=True)
+                    
                     if not events.empty:
                         #plot_results = graph_events_day(events, station, script_path)
                         save_events(events, station, metadata[chan])
@@ -66,7 +69,6 @@ def init_db_connection(station):
 
 def save_events(events, station, channel):
     print(f"Saving {len(events)} events for {station}, {channel}")
-    print(events)
     cursor, sta_id = init_db_connection(station)
 
     events['station'] = sta_id

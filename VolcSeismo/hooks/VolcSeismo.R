@@ -122,7 +122,7 @@ genEventGraphs2 <- function(matrix_of_features, station, script_file){
         }
       }
       else{begin_event=NA;end_event=NA;duration_event=NA;ampl_event=NA;fre_event=NA}
-      events_ensemble=cbind(ensemble,begin_event,end_event,duration_event,ampl_event,fre_event)
+      events_ensemble=cbind.data.frame(ensemble,begin_event,end_event,duration_event,ampl_event,fre_event)
       events=rbind(events,events_ensemble)
     }
     return(events)
