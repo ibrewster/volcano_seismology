@@ -1,8 +1,11 @@
 import logging
 import os
 
+from datetime import datetime, timedelta
 from io import StringIO
 
+import matplotlib.pyplot as plt
+import matplotlib.dates as mdates
 import pandas
 import psycopg2
 
@@ -11,7 +14,10 @@ from rpy2.robjects.packages import importr
 from rpy2.robjects import pandas2ri
 from rpy2.robjects.conversion import localconverter
 
-from . import _process_r_vars as VARS
+try:
+    from . import _process_r_vars as VARS
+except ImportError:
+    import _process_r_vars as VARS
 
 
 def run(data, station, metadata):
@@ -33,18 +39,19 @@ def run(data, station, metadata):
 
                 if chan == 'Z':
                     try:
-                        events = gen_event_data(features, station, script_path)
+                        events = gen_event_data(features, script_path)
                     except:
                         continue
                     # Remove any NaN rows
                     events.dropna(subset = ['begin_event', 'end_event', 'duration_event'],
                                   inplace = True)
-                    # Drop any rows with the "filler" value
+
+                    # Drop any rows with the "fill" value
                     events.drop(events[events['begin_event']==-2147483648].index, inplace=True)
                     
                     if not events.empty:
-                        #plot_results = graph_events_day(events, station, script_path)
                         save_events(events, station, metadata[chan])
+                    create_plots(station,metadata[chan])
 
                 save_to_db(features, station, metadata[chan])
     return features
@@ -66,7 +73,67 @@ def init_db_connection(station):
 
     return (cursor, sta_id[0])
 
+def create_plots(station,channel, date_from = None, date_to = None):
+    dest_dir = os.path.join(os.path.dirname(__file__), '../web/static/img/events', f"{station}-{channel}.png")
+    dest_dir = os.path.abspath(dest_dir)
+    
+    if date_to is None:
+        date_to = datetime.utcnow()
+    
+    if date_from is None:
+        date_from = date_to - timedelta(days = 31)
+        
+    cursor,sta_id=init_db_connection(station)
+    
+    SQL = """
+    SELECT
+	date,
+	coalesce(events,0) as count
+	FROM (
+		SELECT 
+			date as edate, 
+			avg(events) as events
+		FROM (
+			SELECT 
+				count(*) as events, 
+				date_trunc('day',event_begin) as date, 
+				ensemble 
+			FROM events 
+			WHERE event_begin>%(datefrom)s 
+			AND event_begin<%(dateto)s 
+			AND station=%(station)s
+			AND channel=%(channel)s 
+			GROUP BY 2 ,ensemble) s1 
+		GROUP BY date) s2
+	RIGHT OUTER JOIN (
+		SELECT generate_series(%(datefrom)s::date, %(dateto)s::date, '1 day'::interval) as date
+	) s3
+	ON s3.date=s2.edate
+    ORDER BY date;
+    """
+    params = {'datefrom': date_from,
+              'dateto': date_to,
+              'station': sta_id,
+              'channel': channel,}
+    
+    # cursor.execute(SQL, params)
 
+    events_per_day = pandas.read_sql_query(SQL, cursor.connection,
+                                           params = params)
+    
+    fig, ax = plt.subplots()
+    ax.set_xlabel('Date')
+    ax.set_ylabel('Number of events per day')
+    ax.plot_date(events_per_day['date'], events_per_day['count'], 'black')
+    ax.set_xlim([date_from, date_to])
+    ax.xaxis.set_major_formatter(mdates.DateFormatter('%b %d'))
+    
+    fig.set_size_inches(7.5, 4)
+    fig.set_dpi(300)
+    
+    fig.savefig(dest_dir)
+    
+    
 def save_events(events, station, channel):
     print(f"Saving {len(events)} events for {station}, {channel}")
     cursor, sta_id = init_db_connection(station)
@@ -168,10 +235,5 @@ def save_to_db(data, station, channel = 'BHZ'):
 
 # The following is just for debugging purposes, to run this hook asside from other processing.
 if __name__ == "__main__":
-    import pandas
-
-    # test file
-    df = pandas.read_csv("WACK_2021_06_03_14_50_09.csv")
-    result = run(df)
-    result.to_csv('pythonResult.csv')
+    create_plots('ILS', 'BHZ')
 

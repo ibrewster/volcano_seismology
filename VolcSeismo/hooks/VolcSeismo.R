@@ -77,7 +77,7 @@ runAnalysis <- function(time, data, station, chan, script_dir){
     return(matrix_of_features)
 }
 
-genEventGraphs1 <- function(matrix_of_features, station, script_file){
+genEventGraphs1 <- function(matrix_of_features, script_file) {
     SCRIPT_DIRECTORY <- dirname(script_file)
     ## SCRIPT TO SEND TO ISRAEL (26 AUGUST 2022) - EXTRACTION OF EVENTS
     matrix_of_features=na.omit(as.data.frame((matrix_of_features)))  #remove rows with NA
@@ -97,11 +97,11 @@ genEventGraphs1 <- function(matrix_of_features, station, script_file){
         matrix_of_features=cbind(matrix_of_features,aux)
     }
     matrix_of_features_with_predictions=matrix_of_features
-    events = genEventGraphs2(matrix_of_features_with_predictions, station, script_file)
+    events = genEventGraphs2(matrix_of_features_with_predictions)
     return(as.data.frame(events))
 }
 
-genEventGraphs2 <- function(matrix_of_features, station, script_file){
+genEventGraphs2 <- function(matrix_of_features){
     # EXTRACT INITIATION, ENDING, AND DURATION OF THE EVENTS FROM THE PREDICTIONS
     events=c()
     for(j in 28:length(matrix_of_features)){
