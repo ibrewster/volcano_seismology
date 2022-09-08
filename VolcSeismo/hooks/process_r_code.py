@@ -28,7 +28,6 @@ def run(data, station, metadata):
     base.source(script_path)
     r_func = robjects.globalenv['runAnalysis']
     gen_event_data = robjects.globalenv['genEventGraphs1']
-    graph_events_day = robjects.globalenv['EventsPerDay']
     with localconverter(robjects.default_converter + pandas2ri.converter):
         for chan in ('Z', 'E', 'N'):
             if metadata[chan]:
