@@ -1,4 +1,5 @@
 import csv
+import glob
 import os
 import time
 import json
@@ -653,3 +654,59 @@ def list_volc_anomalies():
 
     return flask.jsonify({'volc': volc, 'stations': result})
 
+@app.route('/listEventImages')
+def list_event_images():
+    SQL = """
+    SELECT 
+        array_agg(name), 
+        array_agg(id), 
+        site
+    FROM
+    (SELECT
+            name,
+            id,
+            location
+    FROM
+    stations) s1
+    INNER JOIN (
+        SELECT
+            location,
+            radius,
+            site,
+            longitude
+        FROM volcanoes
+    ) s2 
+    ON (s1.location <-> s2.location)/1000<=s2.radius
+    WHERE EXISTS (SELECT 1 FROM last_data WHERE station=s1.id AND lastdata>now()-'10 years'::interval LIMIT 1)
+    GROUP BY site,longitude
+    ORDER BY CASE WHEN longitude>0 THEN longitude-360 ELSE longitude END DESC
+    """
+    
+    result = {}
+    file_path = os.path.dirname(__file__)
+    img_path = 'static/img/events'
+    full_path = os.path.join(file_path, img_path)
+    with utils.db_cursor() as cursor:
+        cursor.execute(SQL)
+        for siteinfo in cursor:
+            stations, ids, site = siteinfo
+            if not site:
+                continue
+            
+            images = []
+            for station, staid in zip(stations, ids):
+                img_pattern = f'{station}-?HZ.png'
+                # We assume this only returns one, as there should only be one Z channel per station.
+                try:
+                    file = glob.glob(os.path.join(full_path, img_pattern))[0]
+                except IndexError:
+                    app.logger.warning(f"No event image found for station {station}")
+                    continue
+                
+                file_path = os.path.join(img_path, os.path.basename(file))
+                images.append((station, file_path, staid))
+            result[site] = images
+            
+    # flask.jsonify sorts the result, which is incorrect for this usage, 
+    # so I have to use the "basic" json.dumps instead.
+    return json.dumps(result)

@@ -10,22 +10,6 @@ var iconColors = {
     'pbo': '#EAFF00'
 }
 
-// let areaBounds={}
-// let numOpts=$('#volcSelect option').length
-// function generateMapBounds(i){
-//     if(i>=numOpts)
-//         return;
-//     $('#volcSelect')[0].selectedIndex=i;
-//     $('#volcSelect').change();
-//     setTimeout(function(){
-//         let bounds=map.getBounds().toJSON();
-//         let sector=$('#volcSelect').val();
-//         areaBounds[sector]=bounds;
-//         setTimeout(generateMapBounds(i+1),0);
-//     },500);
-// }
-
-
 stationMarkers = []
 
 var iframe_id = 0;
@@ -39,6 +23,7 @@ $(document).ready(function() {
     $(document).on('click', 'input.channelOption', generateGraphs);
     $(document).on('click', 'button.downloadData', downloadData);
     $(document).on('click', '.tabs button', setTab);
+    $('#eventsTab').click(getEvents);
     $('img.menu').click(showMenu);
 
     $(document).on('change', 'div.chartHeader input.date', changeDateRangeInput);
@@ -1185,18 +1170,6 @@ function getBoundsFromLatLng(lat, lng, radiusInKm){
     map.fitBounds(mapBounds)
 }
 
-// function getAnomalies(){
-//     anomTimer=null;
-//     const bounds=map.getBounds().toJSON();
-//     $.getJSON('listAnomalies',{'bounds':JSON.stringify(bounds)})
-//     .done(showAnomalies)
-//     .fail(function(a,b,c){
-//         console.error(a);
-//         console.error(b);
-//         console.error(c);
-//     })
-// }
-
 function getAnomalies(){
     anomTimer=null;
     let anomaliesDiv=$('#anomaliesPlots').empty();
@@ -1227,13 +1200,58 @@ function showAnomalies(data){
     }
 }
 
-// function showAnomalies(data){
-//     let anomaliesDiv=$('#anomaliesPlots').empty();
-//     for( const station in data){
-//         let [short, long, id]=data[station];
-//         anomaliesDiv.append(createAnomaliesDiv(station,long,short, id));
-//     }
-// }
+function getEvents() {
+    $.getJSON('listEventImages')
+    .done(function(data){
+        let eventsDiv=$('#eventPlots').empty()
+        for(const volc in data){
+            const volcID=volc.replace(' ','');
+            let volcDiv=$(`<div id=${volcID}EventsTop class="volcAnomaliesTop">`);
+            let titleDiv=$('<div class=title>')
+            titleDiv.append(volc);
+            titleDiv.append("<br>");
+            titleDiv.append(`<img class="anomalyMap" src="static/img/maps/${volcID}.png">`)
+            volcDiv.append(titleDiv)
+            const destDiv=$(`<div id=${volcID}Events class="volcAnomalies">`)
+            volcDiv.append(destDiv)
+            eventsDiv.append(volcDiv)
+                
+                
+            for(const i in data[volc]){
+                console.log(i)
+                const [station,image,stationid]=data[volc][i]
+                const eventDiv = createEventsDiv(station,image,stationid)
+                destDiv.append(eventDiv)
+            }
+        }
+    })
+}
+
+function createEventsDiv(station,img,stationID){
+    let eventTopDiv=$('<div class="anomaliesTop">');
+
+    eventTopDiv.append(`<div class=title>${station}</div>`);
+    eventTopDiv.data('stationID',stationID);
+    eventTopDiv.on('click',function(){
+        let id=$(this).data('stationID');
+        showStationGraphs.call(markerLookup[id]);
+    });
+
+    let eventDiv = $('<div class="anomalies">');
+    let eventImg = $('<img>');
+    eventImg.on('error', function() {
+            $(this).closest('div.anomaliesTop').addClass('error');
+        })
+        .on('load', function() {
+            $(this).closest('div.anomaliesTop').removeClass('error');
+        })
+        .attr('src', img);
+
+    eventDiv.append(eventImg);
+    eventTopDiv.append(eventDiv);
+
+    return eventTopDiv;
+}
 
 function setSpecialText() {
     if (menuMode) {
