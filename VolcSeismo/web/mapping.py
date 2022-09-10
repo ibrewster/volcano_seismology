@@ -710,3 +710,37 @@ def list_event_images():
     # flask.jsonify sorts the result, which is incorrect for this usage, 
     # so I have to use the "basic" json.dumps instead.
     return json.dumps(result)
+
+@app.route('/getEventData')
+def get_event_data():
+    site = flask.request.args['volc']
+    end = flask.request.args.get('eventEnd', datetime.utcnow())
+    begin = flask.request.args.get('eventBegin', end - timedelta(days = 31))
+    
+    end = end + timedelta(days = 1)
+    end = end.date()
+    begin = begin.date()
+    
+    SQL = """
+    SELECT
+        *
+    FROM events
+    WHERE station=(SELECT id FROM stations WHERE name=%s)
+    AND event_begin>%s
+    AND event_begin<%s
+    """
+    
+    args = (site, begin, end)
+    
+    filename = f"Events_{site}_{begin.strftime('%Y-%m-%d')}_{end.strftime('%Y-%m-%d')}.csv"
+    csv_file = StringIO()
+    csv_writer = csv.writer(csv_file)
+    
+    with utils.db_cursor() as cursor:
+        cursor.execute(SQL, args)
+        csv_writer.writerows(cursor)
+        
+    output = flask.make_response(csv_file.getvalue())
+    output.headers["Content-Disposition"] = f"attachment; filename={filename}"
+    output.headers["Content-type"] = "text/csv"
+    return output    

@@ -23,6 +23,7 @@ $(document).ready(function() {
     $(document).on('click', 'input.channelOption', generateGraphs);
     $(document).on('click', 'button.downloadData', downloadData);
     $(document).on('click', '.tabs button', setTab);
+    $(document).on('click', 'button.downloadEvents',downloadEvents);
     $('#eventsTab').click(getEvents);
     $('img.menu').click(showMenu);
 
@@ -78,6 +79,15 @@ function downloadData() {
 
     var params = $.param(args);
     var url = 'get_full_data?' + params;
+    window.location.href = url;
+}
+
+function downloadEvents(){
+    const volc=$(this).data('volc');
+    args ={'volc':volc}
+    //TODO: filter by date
+    const params=$.param(args)
+    const url='getEventData?'+params;
     window.location.href = url;
 }
 
@@ -1211,6 +1221,7 @@ function getEvents() {
             titleDiv.append(volc);
             titleDiv.append("<br>");
             titleDiv.append(`<img class="anomalyMap" src="static/img/maps/${volcID}.png">`)
+            titleDiv.append(`<br><button class='downloadEvents' data-volc='${volc}'>Download Data</button>`)
             volcDiv.append(titleDiv)
             const destDiv=$(`<div id=${volcID}Events class="volcAnomalies">`)
             volcDiv.append(destDiv)
