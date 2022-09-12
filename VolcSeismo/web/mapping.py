@@ -654,12 +654,13 @@ def list_volc_anomalies():
 
     return flask.jsonify({'volc': volc, 'stations': result})
 
+
 @app.route('/listEventImages')
 def list_event_images():
     SQL = """
-    SELECT 
-        array_agg(name), 
-        array_agg(id), 
+    SELECT
+        array_agg(name),
+        array_agg(id),
         site
     FROM
     (SELECT
@@ -675,13 +676,13 @@ def list_event_images():
             site,
             longitude
         FROM volcanoes
-    ) s2 
+    ) s2
     ON (s1.location <-> s2.location)/1000<=s2.radius
     WHERE EXISTS (SELECT 1 FROM last_data WHERE station=s1.id AND lastdata>now()-'10 years'::interval LIMIT 1)
     GROUP BY site,longitude
     ORDER BY CASE WHEN longitude>0 THEN longitude-360 ELSE longitude END DESC
     """
-    
+
     result = {}
     file_path = os.path.dirname(__file__)
     img_path = 'static/img/events'
@@ -692,7 +693,7 @@ def list_event_images():
             stations, ids, site = siteinfo
             if not site:
                 continue
-            
+
             images = []
             for station, staid in zip(stations, ids):
                 img_pattern = f'{station}-?HZ.png'
@@ -702,45 +703,62 @@ def list_event_images():
                 except IndexError:
                     app.logger.warning(f"No event image found for station {station}")
                     continue
-                
+
                 file_path = os.path.join(img_path, os.path.basename(file))
                 images.append((station, file_path, staid))
             result[site] = images
-            
-    # flask.jsonify sorts the result, which is incorrect for this usage, 
+
+    # flask.jsonify sorts the result, which is incorrect for this usage,
     # so I have to use the "basic" json.dumps instead.
     return json.dumps(result)
+
 
 @app.route('/getEventData')
 def get_event_data():
     site = flask.request.args['volc']
     end = flask.request.args.get('eventEnd', datetime.utcnow())
     begin = flask.request.args.get('eventBegin', end - timedelta(days = 31))
-    
+
     end = end + timedelta(days = 1)
     end = end.date()
     begin = begin.date()
-    
+
     SQL = """
+WITH volc_info AS (
     SELECT
-        *
-    FROM events
-    WHERE station=(SELECT id FROM stations WHERE name=%s)
-    AND event_begin>%s
-    AND event_begin<%s
+            location,
+            radius
+    FROM volcanoes
+    WHERE site=%s
+)
+SELECT
+	stations.name,
+	ensemble,
+	event_begin,
+	event_end,
+	duration,
+	ampl,
+	frequency,
+	channel
+FROM events
+INNER JOIN stations ON events.station=stations.id
+WHERE (stations.location <-> (SELECT location FROM volc_info))/1000<= (SELECT radius FROM volc_info)
+AND event_begin>%s
+AND event_begin<%s
+ORDER BY station, ensemble;
     """
-    
+
     args = (site, begin, end)
-    
+
     filename = f"Events_{site}_{begin.strftime('%Y-%m-%d')}_{end.strftime('%Y-%m-%d')}.csv"
     csv_file = StringIO()
     csv_writer = csv.writer(csv_file)
-    
+
     with utils.db_cursor() as cursor:
         cursor.execute(SQL, args)
         csv_writer.writerows(cursor)
-        
+
     output = flask.make_response(csv_file.getvalue())
     output.headers["Content-Disposition"] = f"attachment; filename={filename}"
     output.headers["Content-type"] = "text/csv"
-    return output    
+    return output
