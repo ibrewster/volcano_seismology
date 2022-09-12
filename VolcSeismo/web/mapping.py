@@ -745,7 +745,7 @@ INNER JOIN stations ON events.station=stations.id
 WHERE (stations.location <-> (SELECT location FROM volc_info))/1000<= (SELECT radius FROM volc_info)
 AND event_begin>%s
 AND event_begin<%s
-ORDER BY station, ensemble;
+ORDER BY stations.name, ensemble;
     """
 
     args = (site, begin, end)
