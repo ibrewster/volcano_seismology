@@ -110,7 +110,7 @@ def run(ENDTIME = None):
      """
 #     ##################DEBUG########################
     # for station, dtstart, dtend, result in procs:
-        # print(station, dtstart, dtend, result)
+    # print(station, dtstart, dtend, result)
     # return
 #     ###############################################
 
@@ -145,9 +145,9 @@ def _process_data(STA, sta_dict, STARTTIME, ENDTIME):
     except TypeError:
         logging.warning(f"Unable to retrieve data for station {STA}, {STARTTIME} to {ENDTIME}")
         return True
-    
+
     if stream is None or waveform_times is None:
-        logging.warning(f"No data retrieved for station {STA}, {STARTTIME} to {ENDTIME}")
+        logging.warning(f"No data retrieved for station {NET} {STA} {CHAN}, {STARTTIME} to {ENDTIME}")
         return True  # missed this station/time
 
     run_hooks(stream, waveform_times)
