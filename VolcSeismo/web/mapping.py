@@ -580,12 +580,11 @@ FROM
         if cursor.rowcount == 0:
             return graph_data  # No data
         print("Ran query in", time.time() - t1)
-        results = numpy.asarray(cursor.fetchall()).T
-        t3 = time.time()
-        print("Got results in", t3 - t1)
-        for idx, key in enumerate(SQL_HEADER):
-            graph_data[key] = results[idx].tolist()
-        print("processed results in", time.time() - t3)
+        results = pd.DataFrame(
+            cursor.fetchall(),
+            columns = SQL_HEADER).to_dict(orient = "list")
+        graph_data.update(results)
+
         print("Got", len(graph_data['dates']), "rows in", time.time() - t1, "seconds")
         return graph_data
 

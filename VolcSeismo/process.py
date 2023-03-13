@@ -78,7 +78,7 @@ def run(ENDTIME = None):
                     locs = stations  # All stations
 
 #                     #############DEBUG####################
-#                     locs = {key: value for key, value in stations.items() if value['CHAN'] == 'EHZ'}
+                    locs = {key: value for key, value in stations.items() if key in ['ANPB', 'ANNW', 'ANPK']}
 #                     ######################################
                 for loc, loc_info in locs.items():
                     lock_file = os.path.join(tempdir, loc)
@@ -90,12 +90,12 @@ def run(ENDTIME = None):
                     Path(lock_file).touch()
 
                     # And do it
-                    future = executor.submit(_process_data, loc,
-                                             loc_info, start, end)
-                    procs.append((loc, start, end, future))
+                    # future = executor.submit(_process_data, loc,
+                                             # loc_info, start, end)
+                    # procs.append((loc, start, end, future))
                     ##################DEBUG################
-                    # result = _process_data(loc, loc_info, start, end)
-                    # procs.append((loc, start, end, result))
+                    result = _process_data(loc, loc_info, start, end)
+                    procs.append((loc, start, end, result))
                     #######################################
 #             ############DEBUG###############
 #             break
@@ -109,9 +109,9 @@ def run(ENDTIME = None):
     (?,?,?)
      """
 #     ##################DEBUG########################
-    # for station, dtstart, dtend, result in procs:
-    # print(station, dtstart, dtend, result)
-    # return
+    for station, dtstart, dtend, result in procs:
+        print(station, dtstart, dtend, result)
+    return
 #     ###############################################
 
     for station, dtstart, dtend, proc in procs:
