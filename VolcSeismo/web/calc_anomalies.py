@@ -59,7 +59,7 @@ WHERE EXISTS (SELECT 1
         """)
 
     results = []
-    pool = ThreadPool(12)
+    pool = ThreadPool(8)
     db_data = cursor.fetchall()
     db_conn.close()
 
