@@ -156,7 +156,7 @@ function generateGraphs() {
     //"this" is the button that was clicked
     const dest = $(this).closest('div.chart');
     const optionsDiv = dest.find('div.channelSel');
-    //Not neccesarily redundant, as this function could 
+    //Not neccesarily redundant, as this function could
     //be called() with an arbitrary button as "this"
     const selChannelOpt = optionsDiv.find('.channelOption:checked')
     const station = selChannelOpt.data('station');
@@ -468,7 +468,7 @@ function dateRangeClicked() {
     $(this).addClass('active');
 }
 
-function showStationGraphs(event) {
+function showStationGraphs(event,volc) {
     //we clicked on a station. Switch to the station graphs tab
     if(!$('#stationsTab').hasClass('current'))
         $('#stationsTab').click();
@@ -484,6 +484,10 @@ function showStationGraphs(event) {
     var station = $(this).data('name');
     var channels = $(this).data('channels');
     var site = $(this).data('site');
+
+    if(typeof(volc)!=="undefined"){
+        $('#volcSelect').val(volc).change()
+    }
 
     var available_charts = $('div.chart:hidden')
     var visible_charts = $('div.chart:visible')
@@ -595,14 +599,14 @@ function createChartHeader(station, site, channels) {
     return chartHeader;
 }
 
-function createAnomaliesDiv(station,long,short,stationID){
+function createAnomaliesDiv(volc, station,long,short,stationID){
     let anomaliesTopDiv=$('<div class="anomaliesTop">');
 
     anomaliesTopDiv.append(`<div class=title>${station}</div>`);
     anomaliesTopDiv.data('stationID',stationID);
-    anomaliesTopDiv.on('click',function(){
+    anomaliesTopDiv.on('click',function(event){
         let id=$(this).data('stationID');
-        showStationGraphs.call(markerLookup[id]);
+        showStationGraphs.call(markerLookup[id],event,volc);
     });
 
     let anomaliesDiv = $('<div class="anomalies short">');
@@ -1166,7 +1170,7 @@ function getBoundsFromLatLng(lat, lng, radiusInKm){
     const lat_change = radiusInKm/111.2;
     const kmperdegree=Math.abs(Math.cos(lat*(Math.PI/180)))*111.320;
     const lon_change=radiusInKm/kmperdegree;
-    const bounds = { 
+    const bounds = {
         lat_min : lat - lat_change,
         lon_min : lng - lon_change,
         lat_max : lat + lat_change,
@@ -1206,7 +1210,7 @@ function showAnomalies(data){
     const destDiv=$(`#${volc}Anomalies`);
     for(const station in stations){
         let [short,long,id]=stations[station]
-        destDiv.append(createAnomaliesDiv(station,long,short,id));
+        destDiv.append(createAnomaliesDiv(data['volc'],station,long,short,id));
     }
 }
 
@@ -1226,26 +1230,28 @@ function getEvents() {
             const destDiv=$(`<div id=${volcID}Events class="volcAnomalies">`)
             volcDiv.append(destDiv)
             eventsDiv.append(volcDiv)
-                
-                
+
+
             for(const i in data[volc]){
                 console.log(i)
                 const [station,image,stationid]=data[volc][i]
-                const eventDiv = createEventsDiv(station,image,stationid)
+                const eventDiv = createEventsDiv(volc, station,image,stationid)
                 destDiv.append(eventDiv)
             }
         }
     })
 }
 
-function createEventsDiv(station,img,stationID){
+function createEventsDiv(volc, station,img,stationID){
     let eventTopDiv=$('<div class="anomaliesTop">');
 
     eventTopDiv.append(`<div class=title>${station}</div>`);
     eventTopDiv.data('stationID',stationID);
-    eventTopDiv.on('click',function(){
-        let id=$(this).data('stationID');
-        showStationGraphs.call(markerLookup[id]);
+    eventTopDiv.data('volc',volc)
+    eventTopDiv.on('click',function(event){
+        const id=$(this).data('stationID');
+        const volc=$(this).data('volc')
+        showStationGraphs.call(markerLookup[id],event,volc);
     });
 
     let eventDiv = $('<div class="anomalies">');
