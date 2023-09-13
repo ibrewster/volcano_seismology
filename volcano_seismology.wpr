@@ -18,4 +18,7 @@ proj.directory-list = [{'dirloc': loc('.'),
                         'watch_for_changes': True}]
 proj.file-list = [loc('requirements.txt')]
 proj.file-type = 'shared'
+proj.launch-config = {loc('../check_postgres_last_record.py'): ('project',
+        ('-w 15 -c 30 -H novarupta.snap.uaf.edu -n volcano_seismology -t data -d datetime',
+         ''))}
 proj.main-file = loc('runVolcSeismo.py')
