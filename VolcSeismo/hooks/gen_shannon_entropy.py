@@ -85,6 +85,7 @@ def run(stream, times, station, metadata):
 
 def create_plot(station, staid, cursor):
     logging.info(f"Creating entropy plot for station {station}")
+    print(f"**Creating entropy plot for station {station}")
     
     dest_dir = os.path.join(os.path.dirname(__file__), '../web/static/img/entropy', f"{station}.png")
     dest_dir = os.path.abspath(dest_dir)
@@ -108,8 +109,12 @@ def create_plot(station, staid, cursor):
     fig.tight_layout()
     
     logging.info(f"Saving entropy plot for station {station}")
+    print(f"**Saving entropy plot for station {station}")
+    
     fig.savefig(dest_dir)
     plt.close(fig)
+    print(f"**Entropy plot saved for station {station}")
+    
   
 def init_db_connection(station):
     conn = psycopg2.connect(host = VARS.DB_HOST,
