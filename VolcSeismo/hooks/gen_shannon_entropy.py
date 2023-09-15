@@ -113,7 +113,7 @@ def create_plot(station, staid, cursor):
     
     fig.savefig(dest_dir)
     plt.close(fig)
-    print(f"**Entropy plot saved for station {station}")
+    print(f"!!!!Entropy plot saved for station {station}")
     
   
 def init_db_connection(station):
