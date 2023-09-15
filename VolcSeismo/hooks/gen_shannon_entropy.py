@@ -1,4 +1,6 @@
 """gen_shannon_entropy.py Generate Shannon entropy data."""
+
+import logging
 import os
 
 import numpy as np
@@ -82,6 +84,8 @@ def run(stream, times, station, metadata):
     cursor.connection.close()
 
 def create_plot(station, staid, cursor):
+    logging.info(f"Creating entropy plot for station {station}")
+    
     dest_dir = os.path.join(os.path.dirname(__file__), '../web/static/img/entropy', f"{station}.png")
     dest_dir = os.path.abspath(dest_dir)
     
@@ -99,11 +103,11 @@ def create_plot(station, staid, cursor):
     
     ax.xaxis.set_major_formatter(mdates.DateFormatter('%m/%d/%y %H:%M'))
     
-    
     fig.set_size_inches(12, 4)
     fig.set_dpi(300)
     fig.tight_layout()
     
+    logging.info(f"Saving entropy plot for station {station}")
     fig.savefig(dest_dir)
     plt.close(fig)
   
