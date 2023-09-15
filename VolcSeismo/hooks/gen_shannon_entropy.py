@@ -51,6 +51,7 @@ def run(stream, times, station, metadata):
         entropies.append(entropy)
         entropy_times.append(center_time)
         
+    return
     cursor, staid = init_db_connection(station)
     
     db_data = [(staid, ) + x for x in zip(entropies, entropy_times)]
