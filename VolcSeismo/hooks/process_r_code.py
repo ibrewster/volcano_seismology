@@ -16,11 +16,37 @@ from rpy2.robjects.conversion import localconverter
 
 try:
     from . import _process_r_vars as VARS
+    from . import config as CONFIG
 except ImportError:
     import _process_r_vars as VARS
+    import config as CONFIG
+    
 
+def run(stream, times, station, metadata):
+    # What it says
+    stream.detrend()
+    
+    # filter parameters
+    low = CONFIG['FILTER'].getfloat('lowcut', 0.5)
+    high = CONFIG['FILTER'].getfloat('highcut', 15)
+    order = CONFIG['FILTER'].getint('order', 2)    
 
-def run(data, station, metadata):
+    # Apply a butterworth bandpass filter to get rid of some noise
+    stream.filter('bandpass', freqmin = low, freqmax = high,
+                  corners = order, zerophase = True)    
+    
+    scale = metadata['SCALE']
+    
+    if scale is not None:
+        for trace in stream:
+            try:
+                trace.data /= scale
+            except TypeError:
+                pass
+            trace.data = trace.data - trace.data.mean()
+    else:
+        logging.warning(f"No scale value found for station {station}")
+
     base = importr('base')
 
     # Load the R script
@@ -28,18 +54,23 @@ def run(data, station, metadata):
     base.source(script_path)
     r_func = robjects.globalenv['runAnalysis']
     gen_event_data = robjects.globalenv['genEventGraphs1']
+    features = []
     with localconverter(robjects.default_converter + pandas2ri.converter):
         for chan in ('Z', 'E', 'N'):
             if metadata[chan]:
                 try:
-                    features = r_func(data['time'], data[chan], station, chan, script_path)
-                except:
+                    data = stream.select(component = chan).pop().data
+                    data = pandas.Series(data) # We know how to convert pandas series, not numpy arrays
+                    features = r_func(times, data, station, chan, script_path)
+                except Exception as e:
+                    logging.warning(f"process_r_code unable to run for {station}, {chan}: {e}")
                     continue
 
                 if chan == 'Z':
                     try:
                         events = gen_event_data(features, script_path)
-                    except:
+                    except Exception as e:
+                        logging.warning(f"process_r_code unable to gen event data for {station},{chan}: {e}")
                         continue
                     # Remove any NaN rows
                     events.dropna(subset = ['begin_event', 'end_event', 'duration_event'],
@@ -53,6 +84,7 @@ def run(data, station, metadata):
                     create_plots(station,metadata[chan])
 
                 save_to_db(features, station, metadata[chan])
+                
     return features
 
 
@@ -131,6 +163,7 @@ def create_plots(station,channel, date_from = None, date_to = None):
     fig.set_dpi(300)
     
     fig.savefig(dest_dir)
+    plt.close(fig)
     
     
 def save_events(events, station, channel):

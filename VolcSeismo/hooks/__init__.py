@@ -10,6 +10,18 @@ import pandas
 
 from obspy import UTCDateTime
 
+def _init():
+    import sys
+    import os
+    file_path = os.path.dirname(__file__)
+    parent_path = os.path.realpath(os.path.join(file_path, '..'))
+    sys.path.append(parent_path)
+
+
+_init()
+
+from config import config
+
 modules = glob.glob(join(dirname(__file__), "*.py"))
 __all__ = [basename(f)[:-3] for f in modules
            if isfile(f)
@@ -44,7 +56,7 @@ def _create_df(times, z_data, n_data, e_data):
     return df
 
 
-def run_hooks(stream, times = None):
+def run_hooks(stream, times = None, station_data = None):
     if not __all__:
         return
 
@@ -56,35 +68,34 @@ def run_hooks(stream, times = None):
     try:
         z_stream = stream.select(component = 'Z').pop()
         z_channel = z_stream.stats['channel']
-        z_data = z_stream.data
     except:
-        z_data = []
         z_channel = None
 
     try:
         n_stream = stream.select(component = 'N').pop()
         n_channel = n_stream.stats['channel']
-        n_data = n_stream.data
     except Exception as e:
-        n_data = []
         n_channel = None
 
     try:
         e_stream = stream.select(component = 'E').pop()
-        e_data = e_stream.data
         e_channel = e_stream.stats['channel']
     except Exception as e:
-        e_data = []
         e_channel = None
 
-    data_df = _create_df(times, z_data, n_data, e_data)
     metadata = {'Z': z_channel,
                 'N': n_channel,
                 'E': e_channel, }
+    metadata.update(station_data)
+    
     station = stream.traces[0].stats['station']
+    
+    # Make times a pandas series. This is to maintain compatibility with existing code
+    times = pandas.Series(times)
+    
     for hook in __all__:
         try:
-            globals()[hook].run(data_df, station, metadata)
+            globals()[hook].run(stream, times, station, metadata)
         except AttributeError:
             pass  # We already warned this hook would be unavailable
         except TypeError as e:

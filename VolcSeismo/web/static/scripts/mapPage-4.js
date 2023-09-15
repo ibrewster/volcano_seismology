@@ -162,11 +162,11 @@ function generateGraphs() {
     const station = selChannelOpt.data('station');
     const channel = selChannelOpt.data('channel');
 
-    const anomaliesImgs = dest.find('div.anomalies');
+    const entropiesImgs = dest.find('div.anomalies');
     if (channel[channel.length - 1] === 'Z')
-        anomaliesImgs.removeClass('hidden');
+        entropiesImgs.removeClass('hidden');
     else
-        anomaliesImgs.addClass('hidden');
+        entropiesImgs.addClass('hidden');
 
     dest.show();
 
@@ -599,42 +599,30 @@ function createChartHeader(station, site, channels) {
     return chartHeader;
 }
 
-function createAnomaliesDiv(volc, station,long,short,stationID){
-    let anomaliesTopDiv=$('<div class="anomaliesTop">');
+function createEntropiesDiv(volc, station,img,stationID){
+    let entropiesTopDiv=$('<div class="anomaliesTop">');
 
-    anomaliesTopDiv.append(`<div class=title>${station}</div>`);
-    anomaliesTopDiv.data('stationID',stationID);
-    anomaliesTopDiv.on('click',function(event){
+    entropiesTopDiv.append(`<div class=title>${station}</div>`);
+    entropiesTopDiv.data('stationID',stationID);
+    entropiesTopDiv.on('click',function(event){
         let id=$(this).data('stationID');
         showStationGraphs.call(markerLookup[id],event,volc);
     });
 
-    let anomaliesDiv = $('<div class="anomalies short">');
-    let anomaliesImg = $('<img>');
-    anomaliesImg.on('error', function() {
+    let entropiesDiv = $('<div class="anomalies short">');
+    let entropiesImg = $('<img>');
+    entropiesImg.on('error', function() {
             $(this).closest('div.anomaliesTop').addClass('error');
         })
         .on('load', function() {
             $(this).closest('div.anomaliesTop').removeClass('error');
         })
-        .attr('src', short);
+        .attr('src', img);
 
-    anomaliesDiv.append(anomaliesImg);
-    anomaliesTopDiv.append(anomaliesDiv);
+    entropiesDiv.append(entropiesImg);
+    entropiesTopDiv.append(entropiesDiv);
 
-    let anomaliesLongDiv = $('<div class="anomalies long">');
-    let anomaliesLongImg = $('<img>');
-    anomaliesLongImg.on('error', function() {
-            $(this).closest('div.anomaliesTop').addClass('error');
-        })
-        .on('load', function() {
-            $(this).closest('div.anomaliesTop').removeClass('error');
-        })
-        .attr('src',long);
-    anomaliesLongDiv.append(anomaliesLongImg);
-    anomaliesTopDiv.append(anomaliesLongDiv);
-
-    return anomaliesTopDiv;
+    return entropiesTopDiv;
 }
 
 function createChartDiv(station, site, channels) {
@@ -1186,7 +1174,7 @@ function getBoundsFromLatLng(lat, lng, radiusInKm){
 
 function getAnomalies(){
     anomTimer=null;
-    let anomaliesDiv=$('#anomaliesPlots').empty();
+    let entropiesDiv=$('#entropiesPlots').empty();
     $('#volcSelect option').each(function(){
         const volc=this.value;
         const args={'volc':volc};
@@ -1198,8 +1186,8 @@ function getAnomalies(){
         titleDiv.append(`<img class="anomalyMap" src="static/img/maps/${volcID}.png">`)
         volcDiv.append(titleDiv)
         volcDiv.append(`<div id=${volcID}Anomalies class="volcAnomalies">`)
-        anomaliesDiv.append(volcDiv)
-        $.getJSON('listVolcAnomalies',args)
+        entropiesDiv.append(volcDiv)
+        $.getJSON('listVolcEntropies',args)
         .done(showAnomalies)
     })
 }
@@ -1209,8 +1197,8 @@ function showAnomalies(data){
     const stations=data['stations']
     const destDiv=$(`#${volc}Anomalies`);
     for(const station in stations){
-        let [short,long,id]=stations[station]
-        destDiv.append(createAnomaliesDiv(data['volc'],station,long,short,id));
+        let [img,id]=stations[station]
+        destDiv.append(createEntropiesDiv(data['volc'],station,img,id));
     }
 }
 

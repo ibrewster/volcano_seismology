@@ -150,12 +150,12 @@ def _process_data(STA, sta_dict, STARTTIME, ENDTIME):
         logging.warning(f"No data retrieved for station {NET} {STA} {CHAN}, {STARTTIME} to {ENDTIME}")
         return True  # missed this station/time
 
-    run_hooks(stream, waveform_times)
+    run_hooks(stream, waveform_times, sta_dict)
 
 
 if __name__ == "__main__":
-    ENDTIME = UTCDateTime('2020-09-14T16:00:00')
-    STARTTIME = UTCDateTime('2020-09-14T02:40:00')
+    STARTTIME = UTCDateTime('2023-08-01T00:00:10')    
+    ENDTIME = UTCDateTime('2023-08-01T00:10:10')
     gen_times = []
     start = STARTTIME
     end = STARTTIME
@@ -173,7 +173,7 @@ if __name__ == "__main__":
                 if locs is None:
                     locs = stations  # All stations
                     ##########DEBUG####################
-                    # locs = {'ANON': stations['ANON'], }
+                    # locs = {'SSLS': stations['SSLS'], }
                     ###################################
                 for loc, loc_info in locs.items():
                     lock_file = os.path.join(tempdir, loc)
@@ -185,6 +185,10 @@ if __name__ == "__main__":
                     Path(lock_file).touch()
 
                     # And do it
+                    ###############DEBUG###########
+                    _process_data(loc, loc_info, start, end)
+                    continue
+                    #############DEBUG############
                     future = executor.submit(_process_data, loc,
                                              loc_info, start, end)
                     procs.append((loc, start, end, future))

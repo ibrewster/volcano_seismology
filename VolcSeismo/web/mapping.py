@@ -589,8 +589,8 @@ FROM
         return graph_data
 
 
-@app.route('/listRegionAnomalies')
-def list_region_anomalies():
+@app.route('/listRegionEntropies')
+def list_region_entropies():
     bounds = json.loads(flask.request.args['bounds'])
     SQL = """SELECT
         name,id
@@ -598,9 +598,9 @@ def list_region_anomalies():
     WHERE location &&
     ST_MakeEnvelope(%(west)s,%(south)s,%(east)s,%(north)s,4326)
     AND EXISTS (SELECT 1
-	FROM last_data
+	FROM shannon_entropy
 	WHERE station=stations.id
-        AND lastdata>now()-'10 years'::interval
+        AND time>now()-'10 years'::interval
 	LIMIT 1)
     ORDER BY name
     """
@@ -611,15 +611,14 @@ def list_region_anomalies():
     result = {}
     for station in stations:
         station, station_id = station
-        short = f"static/img/anomalies/{station}-short.png"
-        long = f"static/img/anomalies/{station}-long.png"
-        result[station] = [short, long, station_id]
+        img = f"static/img/entropy/{station}.png"
+        result[station] = [img, station_id]
 
     return flask.jsonify(result)
 
 
-@app.route('/listVolcAnomalies')
-def list_volc_anomalies():
+@app.route('/listVolcEntropies')
+def list_volc_entropies():
     volc = flask.request.args['volc']
     SQL = """
     SELECT
@@ -635,9 +634,9 @@ def list_volc_anomalies():
     WHERE dist<=(SELECT radius FROM volcanoes WHERE site=%(volc)s)
     AND EXISTS
     (SELECT 1
-	FROM last_data
+	FROM shannon_entropy
 	WHERE station=s1.id
-        AND lastdata>now()-'10 years'::interval
+        AND time>now()-'10 years'::interval
 	LIMIT 1)
     """
     with utils.db_cursor() as cursor:
@@ -647,9 +646,8 @@ def list_volc_anomalies():
     result = {}
     for station in stations:
         station, station_id = station
-        short = f"static/img/anomalies/{station}-short.png"
-        long = f"static/img/anomalies/{station}-long.png"
-        result[station] = [short, long, station_id]
+        img = f"static/img/entropy/{station}.png"
+        result[station] = [img, station_id]
 
     return flask.jsonify({'volc': volc, 'stations': result})
 
