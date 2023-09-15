@@ -95,7 +95,7 @@ def run_hooks(stream, times = None, station_data = None):
     
     for hook in __all__:
         try:
-            globals()[hook].run(stream, times, station, metadata)
+            globals()[hook].run(stream.copy(), times, station, metadata)
         except AttributeError:
             pass  # We already warned this hook would be unavailable
         except TypeError as e:
