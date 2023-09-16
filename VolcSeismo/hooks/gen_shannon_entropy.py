@@ -90,7 +90,7 @@ def create_plot(station, staid, cursor):
     dest_dir = os.path.join(os.path.dirname(__file__), '../web/static/img/entropy', f"{station}.png")
     dest_dir = os.path.abspath(dest_dir)
     
-    cursor.execute("SELECT entropy,time FROM shannon_entropy WHERE station=%s ORDER BY time", (staid, ))
+    cursor.execute("SELECT entropy,time FROM shannon_entropy WHERE station=%s AND entropy>0 ORDER BY time", (staid, ))
     plot_data = cursor.fetchall()
     entropies, times = list(zip(*plot_data))
     
