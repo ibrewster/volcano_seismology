@@ -16,9 +16,19 @@ body {
     white-space: nowrap;
 }
 
+#mapHeader{
+    border-bottom:1px solid darkgrey;
+    border-right:1px solid darkgrey;
+    border-left:1px solid darkgrey;
+    padding-left:15px;
+    padding-bottom:3px;
+    padding-top:7px;
+}
+
 #legend {
     text-align: left;
     padding-left: 15px;
+    padding-bottom:10px;
     border-top: 3px groove;
 }
 
@@ -160,7 +170,7 @@ body {
 div#main_body {
     display: grid;
     height: 100vh;
-    grid-template-rows: auto 1fr;
+    grid-template-rows: auto minmax(0, 1fr);
     padding-left: 5px;
     padding-right: 5px;
     padding-bottom: 5px;
@@ -363,7 +373,7 @@ img.anomalyMap{
 .chart {
     text-align: center;
     display: inline-grid;
-    grid-template-rows: auto minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr) auto;
     border-right: 1px solid darkgrey;
     border-left: 1px solid darkgrey;
     vertical-align: top;
@@ -418,11 +428,11 @@ img.anomalyMap{
 }
 
 .graphArea {
-    height: 816px;
+    height: 1024px;
 }
 
 .graphWrapper {
-    overflow-y: auto;
+    overflow-y:auto;
 }
 
 .graphImg {
@@ -679,6 +689,7 @@ button.downloadData {
 #featuresTab{
     display:grid;
     grid-template-rows:auto 1fr;
+    padding-top:0px;
 }
 
 @media only screen and (max-width: 800px) {

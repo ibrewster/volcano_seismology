@@ -511,6 +511,8 @@ def load_db_data(station, channel,
         'sd_freq_max10': [],
         'rsam': [],
         'dates': [],
+        'entropy_dates': [],
+        'entropies': [],
         'info': {
 
         },
@@ -524,22 +526,33 @@ def load_db_data(station, channel,
         rsam
     FROM
         data
-    WHERE station=%s
-        AND channel=%s
+    WHERE station=%(staid)s
+        AND channel=%(channel)s
     """
 
-    args = []
+    SHANNON_SQL = """
+    SELECT
+        to_char(time AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SSZ') as "entropy_dates",
+        entropy as "entropies"
+    FROM shannon_entropy
+    WHERE station=%(staid)s
+    AND entropy > 0
+    AND entropy != 'NaN'
+    """
+
+    args = {}
     with utils.db_cursor() as cursor:
         cursor.execute("SELECT id FROM stations WHERE name=%s", (station,))
         try:
             station_id = cursor.fetchone()[0]
-            args.append(station_id)
+            args['staid'] = station_id
         except TypeError:
             return graph_data  # Empty set, reference station not found.
 
-        args.append(channel)
+        args['channel'] = channel
 
-        cursor.execute("""
+        cursor.execute(
+            """
 SELECT
 	to_char(mintime AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SSZ'),
 	to_char(maxtime AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SSZ')
@@ -548,21 +561,25 @@ FROM
 	   min(datetime) as mintime,
 	   max(datetime) as maxtime
 	FROM data
-	  WHERE station=%s
-	  AND channel=%s
+	  WHERE station=%(staid)s
+	  AND channel=%(channel)s
 ) s1;
         """,
-                       args)
+            args
+        )
+
         info = cursor.fetchone()
         graph_data['info']['min_date'] = info[0]
         graph_data['info']['max_date'] = info[1]
 
         if date_from is not None:
-            SQL += " AND datetime>=%s"
-            args.append(date_from)
+            SQL += " AND datetime>=%(start)s"
+            SHANNON_SQL += " AND time>=%(start)s"
+            args['start'] = date_from
         if date_to is not None:
-            SQL += " AND datetime<=%s"
-            args.append(date_to)
+            SQL += " AND datetime<=%(stop)s"
+            SHANNON_SQL += " AND time<=%(stop)s"
+            args['stop'] = date_to
 
         print("Running query with factor", factor)
         postfix = f" AND epoch%%{PERCENT_LOOKUP.get(factor,'1=0')}"
@@ -577,14 +594,25 @@ FROM
 
         t1 = time.time()
         cursor.execute(SQL, args)
-        if cursor.rowcount == 0:
-            return graph_data  # No data
-        print("Ran query in", time.time() - t1)
-        results = pd.DataFrame(
-            cursor.fetchall(),
-            columns = SQL_HEADER).to_dict(orient = "list")
-        graph_data.update(results)
+        if cursor.rowcount != 0:
+            # return graph_data  # No data
+            results = pd.DataFrame(
+                cursor.fetchall(),
+                columns = SQL_HEADER).to_dict(orient = "list")
+            graph_data.update(results)
 
+        # Get shannon entropy data
+        SHANNON_SQL += " ORDER BY time"
+        cursor.execute(SHANNON_SQL, args)
+        if cursor.rowcount != 0:
+            results = pd.DataFrame(
+                cursor.fetchall(),
+                columns = ("entropy_dates", "entropies")
+            ).to_dict(orient = "list")
+            graph_data.update(results)
+
+
+        print("Ran query in", time.time() - t1)
         print("Got", len(graph_data['dates']), "rows in", time.time() - t1, "seconds")
         return graph_data
 
