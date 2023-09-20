@@ -528,6 +528,9 @@ def load_db_data(station, channel,
         data
     WHERE station=%(staid)s
         AND channel=%(channel)s
+        AND freq_max10!='NaN'
+        AND sd_freq_max10!='NaN'
+        AND rsam!='NaN'
     """
 
     SHANNON_SQL = """
