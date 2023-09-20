@@ -100,7 +100,7 @@ def create_plot(station, staid, cursor):
     ax.set_xlabel('Date')
     ax.set_ylabel('Shannon Entropy')    
 
-    ax.plot(times, entropies, linestyle = 'solid', color = 'red')
+    ax.plot(times, entropies, linestyle = 'solid', color = 'blue')
     
     ax.xaxis.set_major_formatter(mdates.DateFormatter('%m/%d/%y %H:%M'))
     
