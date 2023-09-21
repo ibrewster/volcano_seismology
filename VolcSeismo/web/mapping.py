@@ -533,10 +533,15 @@ def load_db_data(station, channel,
         AND rsam!='NaN'
     """
 
-    SHANNON_SQL = """
+    shannon_column = 'entropy'
+    shannon_channel = channel[-1]
+    if shannon_channel != 'Z':
+        shannon_column += f"_{shannon_channel}"
+        
+    SHANNON_SQL = f"""
     SELECT
         to_char(time AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SSZ') as "entropy_dates",
-        entropy as "entropies"
+        {shannon_column} as "entropies"
     FROM shannon_entropy
     WHERE station=%(staid)s
     AND entropy > 0
