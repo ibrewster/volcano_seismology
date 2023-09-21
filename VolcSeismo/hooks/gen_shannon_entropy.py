@@ -4,6 +4,7 @@ import logging
 import os
 
 import numpy as np
+import pandas
 import psycopg2
 import scipy.stats as stats
 import matplotlib.pyplot as plt
@@ -16,15 +17,10 @@ except ImportError:
     
     
 def run(stream, times, station, metadata):
-    if metadata['Z'] is None:
-        return
+    stream.filter('bandpass', freqmin=1.0, freqmax=16)
     
-    stream.filter('bandpass', freqmin=1.0, freqmax=16)    
-    st = stream.select(component = 'Z').pop()
-    
-    data = st.data
-    if not (~np.isnan(data)).all():
-        return #bad data for this site. We need not NaN
+    # if not (~np.isnan(data)).all():
+        # return #bad data for this site. We need not NaN
     
     
     # Step 3: Define the window size for analysis and overlap
@@ -34,34 +30,41 @@ def run(stream, times, station, metadata):
     # Convert minutes to seconds
     window_size_seconds = window_size_minutes * 60
     
-    sampling_rate = st.stats.sampling_rate
+    sampling_rate = stream[0].stats.sampling_rate
     window_size = int(window_size_seconds * sampling_rate)
     overlap = int(window_size * overlap_percent)
     
-    entropies = []
-    entropy_times = []
+    channels = ('Z', 'E', 'N')
+    datas = {
+        C: stream.select(component = C).pop().data
+        for C in channels
+    }
     
-    for i in range(0, len(data)-window_size, window_size - overlap):
-        window_data = data[i:i+window_size]
-        entropy = shannon_entropy(window_data)
+    entropies = {C: [] for C in channels}
+    
+    idxs = np.arange(0, len(datas['Z']) - window_size, step = window_size - overlap)
+    entropy_times = times[idxs + window_size // 2]
+    
+    for chan in ('Z', 'E', 'N'):
+        for i in idxs:
+            window_data = datas[chan][i:i+window_size]
+            entropy = shannon_entropy(window_data)
+            entropies[chan].append(entropy)
         
-        # Calculate the time associated with the center of the window
-        center_time = times[i + window_size // 2]
-        
-        entropies.append(entropy)
-        entropy_times.append(center_time)
-        
+    # Save the data to the database
     cursor, staid = init_db_connection(station)
     
-    db_data = [(staid, ) + x for x in zip(entropies, entropy_times)]
+    db_data = [(staid, ) + x for x in zip(entropies['Z'], entropies['E'], entropies['N'], entropy_times)]
 
     INSERT_SQL = """
     INSERT INTO shannon_entropy
     (station,
      entropy,
+     entropy_e,
+     entropy_n,
      time
     )
-    VALUES (%s, %s, %s)
+    VALUES (%s, %s, %s, %s, %s)
     ON CONFLICT (station, time) DO UPDATE
     SET entropy=EXCLUDED.entropy
     """
@@ -80,6 +83,7 @@ def run(stream, times, station, metadata):
     finally:        
         cursor.connection.commit()
     
+    # Create a plot of the data
     create_plot(station, staid, cursor)
     cursor.connection.close()
 
