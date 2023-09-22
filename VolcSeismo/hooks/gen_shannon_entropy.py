@@ -19,42 +19,38 @@ except ImportError:
 def run(stream, times, station, metadata):
     stream.filter('bandpass', freqmin=1.0, freqmax=16)
     
-    # if not (~np.isnan(data)).all():
-        # return #bad data for this site. We need not NaN
-    
-    
     # Step 3: Define the window size for analysis and overlap
-    window_size_minutes = 1
+    window_size_seconds = 60
     overlap_percent = 0
-    
-    # Convert minutes to seconds
-    window_size_seconds = window_size_minutes * 60
     
     sampling_rate = stream[0].stats.sampling_rate
     window_size = int(window_size_seconds * sampling_rate)
     overlap = int(window_size * overlap_percent)
     
-    channels = ('Z', 'E', 'N')
-    datas = {
-        C: stream.select(component = C).pop().data
-        for C in channels
-    }
+    # Convert the stream to a DataFrame with the channel component as the header
+    datas = pandas.DataFrame({
+        st.meta['channel'][-1]: st.data for st in stream
+    })
     
-    entropies = {C: [] for C in channels}
+    # The start indexes for our windows
+    idxs = np.arange(0, len(datas) - window_size, step = window_size - overlap)
     
-    idxs = np.arange(0, len(datas['Z']) - window_size, step = window_size - overlap)
-    entropy_times = times[idxs + window_size // 2]
+    # Apply the shannon_entropy algorithim to each window, across all channels
+    # Result is a DataFrame containing entropies for all times
+    entropies = pandas.DataFrame([
+        datas[i:i+window_size].apply(shannon_entropy)
+        for i in idxs
+    ])
+
+    # Use the times from the middle of each window as our entropy times
+    entropies['times'] = times[idxs + window_size // 2].values
     
-    for chan in ('Z', 'E', 'N'):
-        for i in idxs:
-            window_data = datas[chan][i:i+window_size]
-            entropy = shannon_entropy(window_data)
-            entropies[chan].append(entropy)
-        
     # Save the data to the database
     cursor, staid = init_db_connection(station)
     
-    db_data = [(staid, ) + x for x in zip(entropies['Z'], entropies['E'], entropies['N'], entropy_times)]
+    entropies['staid'] = staid
+    
+    db_data = entropies.to_dict('records')
 
     INSERT_SQL = """
     INSERT INTO shannon_entropy
@@ -64,11 +60,21 @@ def run(stream, times, station, metadata):
      entropy_n,
      time
     )
-    VALUES (%s, %s, %s, %s, %s)
+    VALUES (
+        %(staid)s,
+        %(Z)s,
+        %(E)s,
+        %(N)s,
+        %(times)s
+    )
     ON CONFLICT (station, time) DO UPDATE
-    SET entropy=EXCLUDED.entropy
+    SET entropy=EXCLUDED.entropy,
+        entropy_e=EXCLUDED.entropy_e,
+        entropy_n=EXCLUDED.entropy_n
     """
     
+    # Make sure the database is in UTC mode (it should be by default, but don't assume)
+    cursor.execute("SET TIME ZONE 'UTC'")
     try:
         cursor.executemany(INSERT_SQL, db_data)
     except psycopg2.errors.CheckViolation:
@@ -89,12 +95,21 @@ def run(stream, times, station, metadata):
 
 def create_plot(station, staid, cursor):
     logging.info(f"Creating entropy plot for station {station}")
-    print(f"**Creating entropy plot for station {station}")
+    print(f"Creating entropy plot for station {station}")
     
     dest_dir = os.path.join(os.path.dirname(__file__), '../web/static/img/entropy', f"{station}.png")
     dest_dir = os.path.abspath(dest_dir)
     
-    cursor.execute("SELECT entropy,time FROM shannon_entropy WHERE station=%s AND entropy>0 ORDER BY time", (staid, ))
+    cursor.execute(
+        """
+        SELECT entropy,time
+        FROM shannon_entropy
+        WHERE station=%s
+        AND entropy>0
+        AND entropy!='NaN'
+        ORDER BY time""",
+        (staid, )
+    )
     plot_data = cursor.fetchall()
     entropies, times = list(zip(*plot_data))
     
@@ -113,11 +128,9 @@ def create_plot(station, staid, cursor):
     fig.tight_layout()
     
     logging.info(f"Saving entropy plot for station {station}")
-    print(f"**Saving entropy plot for station {station}")
     
     fig.savefig(dest_dir)
     plt.close(fig)
-    print(f"!!!!Entropy plot saved for station {station}")
     
   
 def init_db_connection(station):

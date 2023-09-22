@@ -61,9 +61,7 @@ def run_hooks(stream, times = None, station_data = None):
         return
 
     if times is None:
-        times = stream[0].times()
-        DATA_START = UTCDateTime(stream[0].stats['starttime'])
-        times = ((times + DATA_START.timestamp) * 1000).astype('datetime64[ms]')
+        times = pandas.to_datetime(stream[0].times('timestamp'), unit ='s').to_series()
 
     try:
         z_stream = stream.select(component = 'Z').pop()
@@ -89,9 +87,6 @@ def run_hooks(stream, times = None, station_data = None):
     metadata.update(station_data)
     
     station = stream.traces[0].stats['station']
-    
-    # Make times a pandas series. This is to maintain compatibility with existing code
-    times = pandas.Series(times)
     
     for hook in __all__:
         try:
