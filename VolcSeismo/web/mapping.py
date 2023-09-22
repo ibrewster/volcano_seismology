@@ -544,8 +544,8 @@ def load_db_data(station, channel,
         {shannon_column} as "entropies"
     FROM shannon_entropy
     WHERE station=%(staid)s
-    AND entropy > 0
-    AND entropy != 'NaN'
+    AND {shannon_column} > 0
+    AND {shannon_column} != 'NaN'
     """
 
     args = {}
