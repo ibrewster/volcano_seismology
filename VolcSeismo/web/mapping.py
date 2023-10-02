@@ -413,26 +413,44 @@ def get_full_data():
 
     del data['info']
 
-    header = []
-    csv_data = []
-    for col, val in data.items():
-        csv_data.append(val)
-        if col == "dates":
-            col = "date"
-        header.append(col)
+    entropy_data = {
+        'entropy_dates': data.pop('entropy_dates'),
+        'entropy': data.pop('entropies')
+    }
 
-    csv_data = numpy.asarray(csv_data).T
+    df = pd.DataFrame(data)
+    df['date_idx'] = pd.to_datetime(df['dates'], format = '%Y-%m-%dT%H:%M:%SZ', utc = True)
+    df = df.set_index('date_idx')
+
+    entropy_data = pd.DataFrame(entropy_data)
+    entropy_data['date_idx'] = pd.to_datetime(entropy_data['entropy_dates'])
+    entropy_data = entropy_data.set_index('date_idx')
+
+    df = df.join(entropy_data, how = 'outer')
 
     csv_file = StringIO()
-    csv_writer = csv.writer(csv_file)
-    csv_writer.writerow(header)
-    csv_writer.writerows(csv_data)
 
-    output = flask.make_response(csv_file.getvalue())
-    output.headers["Content-Disposition"] = f"attachment; filename={filename}"
-    output.headers["Content-type"] = "text/csv"
+    df = df.rename(columns = {'dates': 'date',})
+    df['entropy'] = df['entropy'].fillna('').astype(str)
+
+    csv_columns = df.columns.to_list()
+    del csv_columns[csv_columns.index('date')]
+    del csv_columns[csv_columns.index('entropy_dates')]
+    df = df[['date']+csv_columns]
+
+
+    def generate():
+        yield ",".join(df.columns.to_list()) + '\n'
+        for row in df.itertuples(index = False, name = None):
+            yield ",".join(str(x) for x in row) + "\n"
+
+    output = flask.Response(
+        generate(),
+        mimetype = 'text/csv',
+        content_type = 'text/csv',
+        headers = {'Content-Disposition': f"attachment; filename={filename}",}
+    )
     return output
-
 
 @app.route('/get_graph_data')
 @compressor.compressed()
