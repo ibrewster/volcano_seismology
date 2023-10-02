@@ -458,20 +458,7 @@ def get_graph_data(as_json=True, station=None, channel = None,
                                                               microsecond = 9999)
             date_from = date_to - timedelta(days = 7)
 
-        if factor == "auto":
-            span = (date_to - date_from).total_seconds()
-            if span > 2592000:  # One month
-                factor = 1
-            elif span > 1209600:  # two weeks
-                factor = 5
-            elif span > 604800:  # one week
-                factor = 25
-            elif span > 172800:  # two days
-                factor = 50
-            else:
-                factor = 100
-
-        else:
+        if factor != 'auto':
             try:
                 factor = int(factor)
             except ValueError:
@@ -494,6 +481,7 @@ def get_graph_data(as_json=True, station=None, channel = None,
 
 
 PERCENT_LOOKUP = {
+    .1: '9000=0',
     1: '90=0',  # Keep every 90th row
     5: '20=0',  # keep every 20th row
     25: '4=0',  # keep every fourth row
@@ -517,6 +505,43 @@ def load_db_data(station, channel,
 
         },
     }
+    
+    split_table_name = f"data_{station.lower()}_{channel.lower()}"
+    rows_desired = 10000
+    row_percent = 1
+    
+    if date_from and date_to:
+        row_percent ="""
+        (extract(epoch FROM (%(stop)s-%(start)s))/ -- number of seconds we want
+         extract(epoch FROM (max(datetime)-min(datetime))) --number of seconds in table
+        ) 
+        """
+    elif date_from:
+        # We want all data to today
+        row_percent ="""
+            (extract(epoch FROM (now() AT TIME ZONE 'UTC'-%(start)s))/ -- number of seconds we want
+              extract(epoch FROM (max(datetime)-min(datetime))) --number of seconds in table
+            ) 
+            """
+    elif date_to:
+        row_percent ="""
+        (extract(epoch FROM (%(stop)s-min(datetime)))/ -- number of seconds we want
+         extract(epoch FROM (max(datetime)-min(datetime))) --number of seconds in table
+        ) 
+        """        
+        
+    PERCENT_SQL = f"""
+    SELECT -- percentage of rows from full table we need to get the desired result count
+    (SELECT reltuples FROM pg_class WHERE relname = '{split_table_name}') /
+	(({rows_desired})/ --number of rows we want, times 100 (percentage)
+	 LEAST(1,
+               {row_percent}
+         ) --percentage of the table we are interested in
+	)
+        FROM {split_table_name}
+"""
+
+
 
     SQL = f"""
     SELECT
@@ -532,6 +557,21 @@ def load_db_data(station, channel,
         AND sd_freq_max10!='NaN'
         AND rsam!='NaN'
     """
+    
+    # SQL = """
+# SELECT 
+    # to_char(datetime AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS"Z"') as text_date,
+    # freq_max10,
+    # sd_freq_max10,
+    # rsam
+# FROM data TABLESAMPLE SYSTEM(%{percent}s) 
+# WHERE 
+    # station=%(staid)s
+    # AND channel=%(channel)s
+    # AND freq_max10!='NaN'
+    # AND sd_freq_max10!='NaN'
+    # AND rsam!='NaN'
+# """
 
     shannon_column = 'entropy'
     shannon_channel = channel[-1]
@@ -589,8 +629,17 @@ FROM
             SHANNON_SQL += " AND time<=%(stop)s"
             args['stop'] = date_to
 
-        print("Running query with factor", factor)
-        postfix = f" AND epoch%%{PERCENT_LOOKUP.get(factor,'1=0')}"
+        # Get the percentage of the table to work with
+        if factor == 'auto':
+            cursor.execute(PERCENT_SQL, args)
+            factor = cursor.fetchone()[0]
+            epoch = f'{int(round(factor))}=0'
+        else:
+            epoch = PERCENT_LOOKUP.get(factor,'1=0');
+            
+        
+        print("Running query with factor", epoch)
+        postfix = f" AND epoch%%{epoch}"
         SQL += postfix
 
         SQL += """
