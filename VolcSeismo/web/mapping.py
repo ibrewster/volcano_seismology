@@ -427,10 +427,8 @@ def get_full_data():
     entropy_data = entropy_data.set_index('date_idx')
 
     df = df.join(entropy_data, how = 'outer')
-
-    csv_file = StringIO()
-
     df = df.rename(columns = {'dates': 'date',})
+
     df['entropy'] = df['entropy'].fillna('').astype(str)
 
     csv_columns = df.columns.to_list()
