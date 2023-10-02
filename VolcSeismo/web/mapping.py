@@ -505,34 +505,47 @@ def load_db_data(station, channel,
 
         },
     }
-    
+
     split_table_name = f"data_{station.lower()}_{channel.lower()}"
     rows_desired = 10000
     row_percent = 1
-    
+
+    tablesample_factor = 100
+    print(date_to-date_from)
     if date_from and date_to:
         row_percent ="""
         (extract(epoch FROM (%(stop)s-%(start)s))/ -- number of seconds we want
          extract(epoch FROM (max(datetime)-min(datetime))) --number of seconds in table
-        ) 
+        )
         """
+        if factor == 'auto':
+            days = date_to - date_from
+            if days > timedelta(days = 365):
+                tablesample_factor = .5
+            elif days > timedelta(days = 90):
+                tablesample_factor = 2
+
     elif date_from:
         # We want all data to today
         row_percent ="""
             (extract(epoch FROM (now() AT TIME ZONE 'UTC'-%(start)s))/ -- number of seconds we want
               extract(epoch FROM (max(datetime)-min(datetime))) --number of seconds in table
-            ) 
+            )
             """
+        if factor =='auto' and (datetime.utcnow() - date_from) > timedelta(days = 90):
+            tablesample_factor = 2
     elif date_to:
         row_percent ="""
         (extract(epoch FROM (%(stop)s-min(datetime)))/ -- number of seconds we want
          extract(epoch FROM (max(datetime)-min(datetime))) --number of seconds in table
-        ) 
-        """        
-        
+        )
+        """
+        if factor == 'auto':
+            tablesample_factor = 2
+
     PERCENT_SQL = f"""
     SELECT -- percentage of rows from full table we need to get the desired result count
-    (SELECT reltuples FROM pg_class WHERE relname = '{split_table_name}') /
+    (SELECT reltuples*{tablesample_factor / 100} FROM pg_class WHERE relname = '{split_table_name}') /
 	(({rows_desired})/ --number of rows we want, times 100 (percentage)
 	 LEAST(1,
                {row_percent}
@@ -543,41 +556,47 @@ def load_db_data(station, channel,
 
 
 
-    SQL = f"""
-    SELECT
-        to_char(datetime AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS"Z"') as text_date,
-        freq_max10,
-        sd_freq_max10,
-        rsam
-    FROM
-        data
-    WHERE station=%(staid)s
-        AND channel=%(channel)s
-        AND freq_max10!='NaN'
-        AND sd_freq_max10!='NaN'
-        AND rsam!='NaN'
-    """
-    
-    # SQL = """
-# SELECT 
-    # to_char(datetime AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS"Z"') as text_date,
-    # freq_max10,
-    # sd_freq_max10,
-    # rsam
-# FROM data TABLESAMPLE SYSTEM(%{percent}s) 
-# WHERE 
-    # station=%(staid)s
-    # AND channel=%(channel)s
-    # AND freq_max10!='NaN'
-    # AND sd_freq_max10!='NaN'
-    # AND rsam!='NaN'
-# """
+    # SQL = f"""
+    # SELECT
+        # to_char(datetime AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS"Z"') as text_date,
+        # freq_max10,
+        # sd_freq_max10,
+        # rsam
+    # FROM
+        # data
+    # WHERE station=%(staid)s
+        # AND channel=%(channel)s
+        # AND freq_max10!='NaN'
+        # AND sd_freq_max10!='NaN'
+        # AND rsam!='NaN'
+    # """
+
+    print("Using tablesample factor of", tablesample_factor)
+    SQL = """
+SELECT
+    to_char(datetime AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS"Z"') as text_date,
+    freq_max10,
+    sd_freq_max10,
+    rsam
+FROM data"""
+
+    if tablesample_factor < 100:
+        SQL += f" TABLESAMPLE SYSTEM({tablesample_factor})"
+
+    SQL += """
+WHERE
+    station=%(staid)s
+    AND channel=%(channel)s
+    AND freq_max10!='NaN'
+    AND sd_freq_max10!='NaN'
+    AND rsam!='NaN'
+"""
 
     shannon_column = 'entropy'
     shannon_channel = channel[-1]
     if shannon_channel != 'Z':
         shannon_column += f"_{shannon_channel}"
-        
+
     SHANNON_SQL = f"""
     SELECT
         to_char(time AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SSZ') as "entropy_dates",
@@ -636,8 +655,8 @@ FROM
             epoch = f'{int(round(factor))}=0'
         else:
             epoch = PERCENT_LOOKUP.get(factor,'1=0');
-            
-        
+
+
         print("Running query with factor", epoch)
         postfix = f" AND epoch%%{epoch}"
         SQL += postfix
