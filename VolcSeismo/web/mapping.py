@@ -620,23 +620,6 @@ def load_db_data(station, channel,
         FROM {split_table_name}
 """
 
-
-
-    # SQL = f"""
-    # SELECT
-        # to_char(datetime AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS"Z"') as text_date,
-        # freq_max10,
-        # sd_freq_max10,
-        # rsam
-    # FROM
-        # data
-    # WHERE station=%(staid)s
-        # AND channel=%(channel)s
-        # AND freq_max10!='NaN'
-        # AND sd_freq_max10!='NaN'
-        # AND rsam!='NaN'
-    # """
-
     print("Using tablesample factor of", tablesample_factor)
     SQL = """
 SELECT
