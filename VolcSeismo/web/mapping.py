@@ -411,12 +411,16 @@ def parse_req_args():
     )
     try:
         date_to = parse(date_to)
+        date_to = date_to.replace(tzinfo = timezone.utc, hour = 23,
+                                  minute = 59, second = 59, microsecond = 9999)
     except TypeError:
         pass
 
     date_from = flask.request.args.get('dateFrom', date_to-timedelta(days = 7))
     try:
         date_from = parse(date_from)
+        date_from = date_from.replace(tzinfo = timezone.utc, hour = 0,
+                                      minute = 0, second = 0, microsecond = 0)
     except TypeError:
         pass
 
