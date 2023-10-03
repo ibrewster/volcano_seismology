@@ -439,6 +439,8 @@ def parse_req_args():
 @compressor.compressed()
 def get_full_data():
     args = parse_req_args()
+    app.logger.info(f"Got request for full data download: {args}")
+
     date_from = args['date_from']
     date_to = args['date_to']
 
@@ -487,6 +489,7 @@ ORDER BY 1
     def generate():
         # Output the header immediately so we go straight to downloading.
         yield ",".join( ('date', 'freq_max10', 'sd_freq_max10', 'rsam', 'entropy', '\n') )
+        app.logger.info("Headers sent. Running data query")
         with utils.db_cursor() as cursor:
             # Look up the ID of the station first, so postgresql can look only at the proper subtable.
             cursor.execute('SELECT id FROM stations WHERE name=%(station)s', args)
@@ -498,11 +501,13 @@ ORDER BY 1
 
             _t1 = time.time()
             cursor.execute(SQL, args)
-            print("Ran query in", time.time()-_t1)
+            app.logger.info(f"Ran query in {time.time()-_t1}" )
 
             #Output the records, formatted as CSV
             for row in cursor:
                 yield ",".join(str(x) if x is not None else '' for x in row) + "\n"
+
+            app.logger.info(f"Completed CSV in {time.time() - _t1}")
 
     output = flask.Response(
         generate(),
