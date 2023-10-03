@@ -399,48 +399,110 @@ def list_stations():
     return flask.jsonify(stns)
 
 
+def parse_req_args():
+    station = flask.request.args['station']
+    channel = flask.request.args['channel']
+    date_to = flask.request.args.get(
+        'dateTo',
+        datetime.now(tz = timezone.utc).replace(hour = 23,
+                                                minute = 59,
+                                                second = 59,
+                                                microsecond = 9999)
+    )
+    try:
+        date_to = parse(date_to)
+    except TypeError:
+        pass
+
+    date_from = flask.request.args.get('dateFrom', date_to-timedelta(days = 7))
+    try:
+        date_from = parse(date_from)
+    except TypeError:
+        pass
+
+    factor = flask.request.args.get('factor', "auto")
+    try:
+        factor = int(factor)
+    except ValueError:
+        if factor != 'auto':
+            return flask.abort(422)
+
+    return {
+        'station': station,
+        'channel': channel,
+        'date_from': date_from,
+        'date_to': date_to,
+        'factor': factor,
+    }
+
 @app.route('/get_full_data')
 @compressor.compressed()
 def get_full_data():
-    station = flask.request.args['station']
-    channel = flask.request.args['channel']
-    date_from = flask.request.args.get('dateFrom')
-    date_to = flask.request.args.get('dateTo')
-    filename = f"{station}-{channel}-{date_from}-{date_to}.csv"
+    args = parse_req_args()
+    date_from = args['date_from']
+    date_to = args['date_to']
 
-    data = get_graph_data(False)
-    # format as a CSV
+    from_str = date_from.strftime('%Y%m%dT%H%M%S')
+    to_str = date_to.strftime('%Y%m%dT%H%M%S')
 
-    del data['info']
+    filename = f"{args['station']}-{args['channel']}-{from_str}-{to_str}.csv"
 
-    entropy_data = {
-        'entropy_dates': data.pop('entropy_dates'),
-        'entropy': data.pop('entropies')
-    }
+    shannon_column = 'entropy'
+    shannon_channel = args['channel'][-1]
+    if shannon_channel != 'Z':
+        shannon_column += f"_{shannon_channel}"
 
-    df = pd.DataFrame(data)
-    df['date_idx'] = pd.to_datetime(df['dates'], format = '%Y-%m-%dT%H:%M:%SZ', utc = True)
-    df = df.set_index('date_idx')
-
-    entropy_data = pd.DataFrame(entropy_data)
-    entropy_data['date_idx'] = pd.to_datetime(entropy_data['entropy_dates'])
-    entropy_data = entropy_data.set_index('date_idx')
-
-    df = df.join(entropy_data, how = 'outer')
-    df = df.rename(columns = {'dates': 'date',})
-
-    df['entropy'] = df['entropy'].fillna('').astype(str)
-
-    csv_columns = df.columns.to_list()
-    del csv_columns[csv_columns.index('date')]
-    del csv_columns[csv_columns.index('entropy_dates')]
-    df = df[['date']+csv_columns]
-
+    SQL = f"""
+SELECT
+    to_char(coalesce(datetime, time) AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS"Z"') as date,
+    freq_max10,
+    sd_freq_max10,
+    rsam,
+    entropy
+FROM data d1
+FULL OUTER JOIN
+	(SELECT
+            date_trunc('seconds',time) as time,
+            {shannon_column}
+	FROM shannon_entropy
+	WHERE
+            time>=%(date_from)s
+            AND time<=%(date_to)s
+            AND {shannon_column} > 0
+            AND {shannon_column} != 'NaN'
+            AND station=%(staid)s
+) se
+ON se.time=date_trunc('seconds', d1.datetime)
+WHERE
+    d1.station=%(staid)s
+    AND channel=%(channel)s
+    AND freq_max10!='NaN'
+    AND sd_freq_max10!='NaN'
+    AND rsam!='NaN'
+    AND datetime>=%(date_from)s
+    AND datetime<=%(date_to)s
+ORDER BY 1
+"""
 
     def generate():
-        yield ",".join(df.columns.to_list()) + '\n'
-        for row in df.itertuples(index = False, name = None):
-            yield ",".join(str(x) for x in row) + "\n"
+        # Output the header immediately so we go straight to downloading.
+        yield ",".join( ('date', 'freq_max10', 'sd_freq_max10', 'rsam', 'entropy', '\n') )
+        with utils.db_cursor() as cursor:
+            # Look up the ID of the station first, so postgresql can look only at the proper subtable.
+            cursor.execute('SELECT id FROM stations WHERE name=%(station)s', args)
+            sta_id = cursor.fetchone()
+            if not sta_id:
+                return flask.abort(404) # Really shouldn't happen...
+
+            args['staid'] = sta_id[0]
+
+            _t1 = time.time()
+            cursor.execute(SQL, args)
+            print("Ran query in", time.time()-_t1)
+
+            #Output the records, formatted as CSV
+            for row in cursor:
+                yield ",".join(str(x) if x is not None else '' for x in row) + "\n"
 
     output = flask.Response(
         generate(),
@@ -456,29 +518,12 @@ def get_graph_data(as_json=True, station=None, channel = None,
                    date_from=None, date_to=None, factor = "auto"):
 
     if station is None:
-        station = flask.request.args['station']
-        channel = flask.request.args['channel']
-        factor = flask.request.args.get('factor', "auto")
-
-        try:
-            date_from = parse(flask.request.args.get('dateFrom'))
-            date_to = parse(flask.request.args.get('dateTo'))
-            date_from = date_from.replace(tzinfo = timezone.utc, hour = 0,
-                                          minute = 0, second = 0, microsecond = 0)
-            date_to = date_to.replace(tzinfo = timezone.utc, hour = 23,
-                                      minute = 59, second = 59, microsecond = 9999)
-        except (TypeError, ValueError):
-            date_to = datetime.now(tz = timezone.utc).replace(hour = 23,
-                                                              minute = 59,
-                                                              second = 59,
-                                                              microsecond = 9999)
-            date_from = date_to - timedelta(days = 7)
-
-        if factor != 'auto':
-            try:
-                factor = int(factor)
-            except ValueError:
-                return flask.abort(422)
+        args = parse_req_args()
+        station = args['station']
+        channel = args['channel']
+        date_from = args['date_from']
+        date_to = args['date_to']
+        factor = args['factor']
 
     data = load_db_data(station, channel,
                         date_from=date_from,
