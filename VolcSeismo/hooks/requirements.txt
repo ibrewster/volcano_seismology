@@ -1,2 +1,5 @@
 rpy2
 psycopg2-binary
+msnoise
+pymysql
+obspy

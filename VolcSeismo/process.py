@@ -154,8 +154,8 @@ def _process_data(STA, sta_dict, STARTTIME, ENDTIME):
 
 
 if __name__ == "__main__":
-    STARTTIME = UTCDateTime('2023-08-01T00:00:10')    
-    ENDTIME = UTCDateTime('2023-08-01T00:10:10')
+    STARTTIME = UTCDateTime('2023-10-01T00:00:10')
+    ENDTIME = UTCDateTime('2023-10-01T00:10:10')
     gen_times = []
     start = STARTTIME
     end = STARTTIME

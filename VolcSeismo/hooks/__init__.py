@@ -85,9 +85,12 @@ def run_hooks(stream, times = None, station_data = None):
                 'N': n_channel,
                 'E': e_channel, }
     metadata.update(station_data)
-    
+
     station = stream.traces[0].stats['station']
-    
+
+    globals()['compute_dVv'].run(stream.copy(), times, station, metadata)
+    return
+
     for hook in __all__:
         try:
             globals()[hook].run(stream.copy(), times, station, metadata)
