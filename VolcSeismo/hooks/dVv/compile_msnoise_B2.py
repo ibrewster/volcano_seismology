@@ -135,11 +135,10 @@ def compute_msnoise():
     process_job_type(db, 'DTT', 'msnoise compute_zoom_dtt')
 
 
-def main(data_location, start_date, end_date):
+def main(data_location, data_output, start_date, end_date):
     # data_location = "C:/Users/laure/OneDrive - Université Libre de Bruxelles/Documents/AThese/Scripts/Scripts_O1/Compile_msnoise/Okmok_test2"
     # data_output = r"C:\Users\laure\OneDrive - Université Libre de Bruxelles\Documents\AThese\Scripts\Scripts_O1\Compile_msnoise\test16"
     # start_date, end_date ='2021-08-05', '2021-08-30'
-    data_output = os.path.join(data_location, '..', 'output')
     start_ref, end_ref = start_date, end_date
     os.chdir(data_output)
 
