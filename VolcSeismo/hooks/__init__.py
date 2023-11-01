@@ -8,8 +8,6 @@ from os.path import dirname, basename, isfile, join
 import numpy
 import pandas
 
-from obspy import UTCDateTime
-
 def _init():
     import sys
     import os
@@ -26,7 +24,7 @@ modules = glob.glob(join(dirname(__file__), "*.py"))
 __all__ = [basename(f)[:-3] for f in modules
            if isfile(f)
            and not f.endswith('__init__.py')
-           and not f.startswith("_")]
+           and not basename(f).startswith("_")]
 
 
 class HookWarning(UserWarning):
