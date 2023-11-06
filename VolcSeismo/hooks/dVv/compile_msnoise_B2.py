@@ -61,8 +61,8 @@ def setup_msnoise(data_location, data_output, start, end,  start_ref, end_ref):
     # filter 0.1 to 1Hz of the whitening function, filter 0.15 to 0.95Hz of the linear regression done in MWCS(looks like 5%), 0:not use anymore, 12sec windows to perform MWCS, 2sec step for windows, True activate the filter
     filters = [
         (1, 0.1, 0.15, 1.0, 0.95, 0, 12, 2, True),
-        (2, 1.0, 1.05, 2.0, 1.95, 0, 12, 2, True),
-        (3, 2.0, 2.05, 4.0, 3.95, 1, 12, 2, True),
+        #(2, 1.0, 1.05, 2.0, 1.95, 0, 12, 2, True),
+        #(3, 2.0, 2.05, 4.0, 3.95, 1, 12, 2, True),
         (4, 0.5, 0.55, 5.0, 4.95, 1, 12, 2, True),
         (5, 1.0, 1.05, 20.0, 19.95, 0, 12, 2, True)
     ]
@@ -100,8 +100,8 @@ def modify_msnoise(data_location, data_output, start, end,  start_ref, end_ref):
     # filter 0.1 to 1Hz of the whitening function, filter 0.15 to 0.95Hz of the linear regression done in MWCS(looks like 5%), 0:not use anymore, 12sec windows to perform MWCS, 2sec step for windows, True activate the filter
     filters = [
         (1, 0.1, 0.15, 1.0, 0.95, 0, 12, 2, True),
-        (2, 1.0, 1.05, 2.0, 1.95, 0, 12, 2, True),
-        (3, 2.0, 2.05, 4.0, 3.95, 1, 12, 2, True),
+        #(2, 1.0, 1.05, 2.0, 1.95, 0, 12, 2, True),
+        #(3, 2.0, 2.05, 4.0, 3.95, 1, 12, 2, True),
         (4, 0.5, 0.55, 5.0, 4.95, 1, 12, 2, True),
         (5, 1.0, 1.05, 20.0, 19.95, 0, 12, 2, True)
     ]

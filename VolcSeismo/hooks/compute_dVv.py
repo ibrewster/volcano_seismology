@@ -45,28 +45,18 @@ def run(stream, times, station, metadata):
     CHAN = metadata['CHAN']
     VOLC = volc_lookup.get(station, 'Unknown')
 
-    end_time = times.max()
-    data_start = pandas.to_datetime(times.min())
-    start_time = end_time - (24 * 60 * 60 * 1000)
-
-    start_str = str(numpy.datetime_as_string(start_time, unit = 'D'))
-    end_str = str(numpy.datetime_as_string(end_time, unit = 'D'))
-
     data_location = os.path.join(os.path.dirname(__file__), 'dVv', 'processing', VOLC, 'data')
     datafile_loc = os.path.join(data_location, NET, STA)
-
-    data_year = data_start.year
-    data_doy = data_start.dayofyear
-
-    filename = f"{STA}.{NET}...{data_year}.{data_doy}"
-    file = os.path.join(datafile_loc, filename)
+    output_dir = os.path.abspath(os.path.join(data_location, '..', 'Output'))
+    
+    os.makedirs(output_dir, exist_ok = True)
+    os.makedirs(datafile_loc, exist_ok = True)    
 
     # Convert to int32 for compatibility with the MSEED output format
     for tr in stream:
         tr.data = tr.data.astype(numpy.int32)
-
-
-    target_start = stream[0].times('utcdatetime').max() - (60 * 40)
+        
+    file = os.path.join(datafile_loc, "data.mseed")        
 
     try:
         data = obspy.read(file)
@@ -74,14 +64,14 @@ def run(stream, times, station, metadata):
     except FileNotFoundError:
         data = stream
 
-    data_start = data[0].times('utcdatetime').min()
 
-    output_dir = os.path.abspath(os.path.join(data_location, '..', 'Output'))
-
-    os.makedirs(output_dir, exist_ok = True)
-    os.makedirs(datafile_loc, exist_ok = True)
-
-    # Make sure we have the full half hour of data
+    # Now that we loaded the existing data, see how far back it goes
+    data_times = data[0].times('timestamp') # Don't get UTCDateTimes directly, as that is WAY slow.
+    data_start = UTCDateTime(data_times.min())
+    #target_start = UTCDateTime(data_times.max()).replace(hour=0, minute=00, second=0, microsecond=0)
+    target_start = UTCDateTime(data_times.max()) - (60 * 60)
+    
+    # Make sure we have the full amount of data
     if data_start > target_start:
         stream, waveform_times = load(NET, STA, '--', CHAN, target_start, data_start)
 
@@ -94,24 +84,8 @@ def run(stream, times, station, metadata):
                       interpolation_samples = -1)
 
     data = data.trim(target_start, nearest_sample = False)
-
-    data_start = data[0].times('utcdatetime').min()
-    data_end = data[0].times('utcdatetime').max()
-
-    if data_start.day != data_end.day:
-        slice_point = data_end.replace(hour = 0, minute = 0, second = 0, microsecond = 0)
-        first_data = data.slice(data_start, slice_point-1)
-        data = data.slice(slice_point, data_end)
-
-        first_data_doy = data_start.julday
-        first_data_year = data_start.year
-        first_filename = f"{STA}.{NET}...{first_data_year}.{first_data_doy}"
-        first_file = os.path.join(datafile_loc, first_filename)
-        first_data.write(first_file, format = "MSEED")
-
-
-    filename = f"{STA}.{NET}...{data_year}.{data_doy}"
-    file = os.path.join(datafile_loc, filename)
+    
+    # And write out the new data file
     data.write(file, format = "MSEED")
 
     #start_str, end_str ='2021-08-05', '2021-08-07'
