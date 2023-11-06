@@ -22,11 +22,11 @@ if __name__ == "__main__":
 
     # DEBUG
     start_str, end_str = '2023-09-30', '2023-10-01'
-    with ProcessPoolExecutor() as executor:        
+    with ProcessPoolExecutor() as executor:
         for volc in volcs:
             data_location = os.path.join(data_path, volc, 'data')
             output_dir = os.path.abspath(os.path.join(data_location, '..', 'Output'))
-    
+
             executor.submit(main, data_location, output_dir, start_str, end_str)
             #main(data_location, output_dir, start_str, end_str)
             print("*******************************")
