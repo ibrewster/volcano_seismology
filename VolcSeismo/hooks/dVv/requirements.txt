@@ -1,0 +1,4 @@
+msnoise
+tables
+sqlalchemy<2
+pandas
