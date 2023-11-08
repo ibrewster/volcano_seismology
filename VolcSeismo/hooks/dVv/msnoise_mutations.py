@@ -3,15 +3,66 @@
 Created on Wed Sep 27 15:45:59 2023
 
 @author: laure
-Contain zoom_s05compute_mwcs.py, zoom_s06compute_dtt.py, zoomerrdvv.py
+Contain get_ref(), zoom_s05compute_mwcs.py, zoom_s06compute_dtt.py, zoomerrdvv.py
 """
 
-from msnoise.api import *
-from msnoise.move2obspy import mwcs
+from .api import *
+#from .api import get_config, get_extension, get_job_types, get_logger, get_params, get_filters, get_results_all, get_results
+from .move2obspy import mwcs
 
 
 import logbook
 import subprocess
+
+def get_extension(export_format):
+    if export_format == "BOTH":
+        return ".MSEED"
+    elif export_format == "SAC":
+        return ".SAC"
+    elif export_format == "MSEED":
+        return ".MSEED"
+    else:
+        return ".MSEED"
+    
+def get_ref(session, station1, station2, filterid, components, params=None):
+    """
+    :type session: :class:`sqlalchemy.orm.session.Session`
+    :param session: A :class:`~sqlalchemy.orm.session.Session` object, as
+        obtained by :func:`connect`
+    :type station1: str
+    :param station1: The name of station 1 (formatted NET.STA)
+    :type station2: str
+    :param station2: The name of station 2 (formatted NET.STA)
+    :type filterid: int
+    :param filterid: The ID (ref) of the filter
+    :type components: str
+    :param components: The name of the components used (ZZ, ZR, ...)
+    :type params: dict
+    :param params: A dictionnary of MSNoise config parameters as returned by
+        :func:`get_params`.
+    :rtype: :class:`obspy.trace`
+    :return: A Trace object containing the ref
+    """
+    from obspy import Trace, read
+    if not params:
+        export_format = get_config(session, 'export_format')
+        extension = get_extension(export_format)
+    else:
+        extension = get_extension(params.export_format)
+
+    ref_name = "%s_%s" % (station1, station2)
+    ref_name = ref_name
+    rf = os.path.join("STACKS", "%02i" %
+                      filterid, "REF", components,
+                      ref_name + extension)
+    if not os.path.isfile(rf):
+        logging.debug("No REF file named %s, skipping." % rf)
+        return Trace()
+
+    return read(rf)[0]
+
+##########################################################################################
+
 def process_job_type(session, job_type, compute_command, reset_command='msnoise reset ', info_command='msnoise info -j'):
     iteration = 0
     if job_type == 'STACK':
@@ -25,7 +76,7 @@ def process_job_type(session, job_type, compute_command, reset_command='msnoise 
                 print(f"Tried to compute {job_type} 4 times and there are still jobs to do")
                 break
         subprocess.run('msnoise info -j', check=True, shell=True)#!{info_command}
-
+        
     while any('I' in job or 'T' in job for job in get_job_types(session, job_type)):
         print(f"After {iteration} iterations, there is work to do for {job_type}")
         print(get_job_types(session, job_type))
@@ -38,15 +89,17 @@ def process_job_type(session, job_type, compute_command, reset_command='msnoise 
             break
     subprocess.run('msnoise info -j', check=True, shell=True)#{info_command}
 
+##########################################################################################
+    
 def zoom_mwcs(loglevel="INFO"):
     logger = logbook.Logger(__name__)
     # Reconfigure logger to show the pid number in log records
     logger = get_logger('msnoise.compute_mwcs_child', loglevel,
                         with_pid=True)
     logger.info('*** Starting: Compute MWCS ***')
-
+    
     db = connect()
-
+    
     export_format = get_config(db, 'export_format')
     if export_format == "BOTH":
         extension = ".MSEED"
@@ -57,7 +110,7 @@ def zoom_mwcs(loglevel="INFO"):
         mov_stacks = [int(mov_stack), ]
     else:
         mov_stacks = [int(mi) for mi in mov_stack.split(',')]
-
+    
     goal_sampling_rate = float(get_config(db, "cc_sampling_rate"))
     maxlag = float(get_config(db, "maxlag"))
     params = get_params(db)
@@ -75,7 +128,7 @@ def zoom_mwcs(loglevel="INFO"):
     #             "We will recompute all MWCS based on the new REF for %s" % pair)
     #         reset_dtt_jobs(db, pair)
     #         update_job(db, "REF", pair, jobtype='DTT', flag='D')
-    #
+    # 
     # logger.debug('Ready to compute')
     # Then we compute the jobs
     outfolders = []
@@ -84,7 +137,7 @@ def zoom_mwcs(loglevel="INFO"):
     while is_dtt_next_job(db, flag='T', jobtype='MWCS'):
         #TODO would it be possible to make the next 8 lines in the API ?
         jobs = get_dtt_next_job(db, flag='T', jobtype='MWCS')
-
+        
         if not len(jobs):
             # edge case, should only occur when is_next returns true, but
             # get_next receives no jobs (heavily parallelised calls).
@@ -105,7 +158,7 @@ def zoom_mwcs(loglevel="INFO"):
                 ref_name = pair.replace('.', '_').replace(':', '_') #
                 station1, station2 = pair.split(":")
 
-                ref = get_ref(db, station1.replace('.', '_'), station2.replace('.', '_'),
+                ref = get_ref(db, station1.replace('.', '_'), station2.replace('.', '_'), 
                               filterid, components, params)
 
                 if not len(ref):
@@ -130,7 +183,7 @@ def zoom_mwcs(loglevel="INFO"):
                     n, data2 = get_results(db, station1, station2, filterid,
                                           components, days, mov_stack,
                                           format="matrix", params=params)
-                    # print(np.shape(data2))
+                    # print(np.shape(data2)) 
                     # print(data2.index)
                     # print(data2.columns)
                     #for j, cur2 in enumerate(data2):
@@ -165,9 +218,9 @@ def zoom_mwcs(loglevel="INFO"):
                 update_job(db, job.day, job.pair, 'DTT', 'T')
 
     logger.info('*** Finished: Compute MWCS ***')
-
+    
 #################################################################################################
-
+    
 from obspy.signal.regression import linear_regression
 
 
@@ -185,7 +238,7 @@ def wavg_wstd(data, errors):
 
 def get_data_first(df,sta1,sta2, interstations, params, first, logger):
     pair = "%s_%s" % (sta1, sta2)
-
+    
     n1, s1, l1 = sta1.split(".")
     n2, s2, l2 = sta2.split(".")
     dpair = "%s_%s_%s_%s" % (n1, s1, n2, s2)
@@ -201,18 +254,18 @@ def get_data_first(df,sta1,sta2, interstations, params, first, logger):
         rmlag = dist / params.dtt_v
     lMlag = lmlag - params.dtt_width
     rMlag = rmlag + params.dtt_width
-
+    
     if params.dtt_sides == "both":
         tindex = np.where(((tArray >= lMlag) & (tArray <= lmlag)) | ((tArray >= rmlag) & (tArray <= rMlag)))[0]
     elif params.dtt_sides == "left":
         tindex = np.where((tArray >= lMlag) & (tArray <= lmlag))[0]
     else:
         tindex = np.where((tArray >= rmlag) & (tArray <= rMlag))[0]
-
+    
     tmp = np.setdiff1d(np.arange(len(tArray)),tindex)
     df.iloc[tmp, df.columns.get_indexer(['err', ])] = 1.0
     df.iloc[tmp, df.columns.get_indexer(['coh', ])] = 0.0
-
+    
 
     tArray = df.index.values
     dtArray = df['dt']
@@ -226,7 +279,7 @@ def get_data_first(df,sta1,sta2, interstations, params, first, logger):
 
 def get_data_second(df,sta1,sta2, interstations, params,logger, dtArray, errArray, cohArray, pairArray):
     pair = "%s_%s" % (sta1, sta2)
-
+    
     n1, s1, l1 = sta1.split(".")
     n2, s2, l2 = sta2.split(".")
     dpair = "%s_%s_%s_%s" % (n1, s1, n2, s2)
@@ -242,19 +295,19 @@ def get_data_second(df,sta1,sta2, interstations, params,logger, dtArray, errArra
         rmlag = dist / params.dtt_v
     lMlag = lmlag - params.dtt_width
     rMlag = rmlag + params.dtt_width
-
+    
     if params.dtt_sides == "both":
         tindex = np.where(((tArray >= lMlag) & (tArray <= lmlag)) | ((tArray >= rmlag) & (tArray <= rMlag)))[0]
     elif params.dtt_sides == "left":
         tindex = np.where((tArray >= lMlag) & (tArray <= lmlag))[0]
     else:
         tindex = np.where((tArray >= rmlag) & (tArray <= rMlag))[0]
-
+    
     tmp = np.setdiff1d(np.arange(len(tArray)),tindex)
     df.iloc[tmp, df.columns.get_indexer(['err', ])] = 1.0
     df.iloc[tmp, df.columns.get_indexer(['coh', ])] = 0.0
-
-
+    
+    
     dtArray = np.vstack((dtArray, df['dt']))
     errArray = np.vstack((errArray, df['err']))
     cohArray = np.vstack((cohArray, df['coh']))
@@ -303,7 +356,7 @@ def compute_dtt(tArray, dtArray, errArray, cohArray, pairArray, params, current,
         pairArray.append("ALL")
         del new_cohArray, new_dtArray, new_errArray,\
             cohindex, errindex, dtindex, wavg, wstd
-
+        
         # then stack selected pais to GROUPS:
         groups = {}
         npairs = len(pairArray)-1
@@ -333,7 +386,7 @@ def compute_dtt(tArray, dtArray, errArray, cohArray, pairArray, params, current,
                                            errindex)
                     index = np.intersect1d(index, dtindex)
                     index = np.intersect1d(index, pairindex)
-
+                    
 
                     wavg, wstd = wavg_wstd(
                         dtArray[:, i][index],
@@ -427,7 +480,7 @@ def save_dtt(df, current, filterid, components, mov_stack, logger):
         df = pd.concat([df, existing])
     df.to_csv(fn, index_label='Date')
     del df, output
-
+    
 def get_zoom_mwcs(session, station1, station2, filterid, components, date,
                 mov_stack=1):
     """
@@ -446,7 +499,7 @@ def get_zoom_mwcs(session, station1, station2, filterid, components, date,
         return df
     else:
         return pd.DataFrame()
-
+    
 def zoom_dtt(interval=1, loglevel="INFO"):
     logger = logbook.Logger(__name__)
     # Reconfigure logger to show the pid number in log records
@@ -480,7 +533,7 @@ def zoom_dtt(interval=1, loglevel="INFO"):
             interstations["%s_%s"%(s1,s2)] = get_interstation_distance(sta1,
                                                                        sta2,
                                                                        sta1.coordinates)
-
+        
     filters = get_filters(db, all=False)
     while is_next_job(db, jobtype='DTT'):
         jobs = get_next_job(db, jobtype='DTT')
@@ -492,7 +545,7 @@ def zoom_dtt(interval=1, loglevel="INFO"):
             netsta1, netsta2 = jobs[0].pair.split(':')
             filterid = int(filters[0].ref)
             components = params.all_components[0]
-            data_date = get_results_all(db, netsta1, netsta2, filterid, components, [dday])
+            data_date = get_results_all(db, netsta1, netsta2, filterid, components, [dday]) 
             hours = data_date.index
             ###
             for current in hours:
@@ -522,12 +575,12 @@ def zoom_dtt(interval=1, loglevel="INFO"):
                                         df, sta1, sta2, interstations, params, first, logger)
                                 else:
                                     tArrayh, dtArrayh, errArrayh, cohArrayh, pairArrayh = get_data_second(
-                                        df, sta1, sta2, interstations, params,logger, dtArrayh, errArrayh, cohArrayh, pairArrayh)
-
+                                        df, sta1, sta2, interstations, params,logger, dtArrayh, errArrayh, cohArrayh, pairArrayh)  
+                                                              
                             if not first:
                                 df = compute_dtt(tArrayh, dtArrayh, errArrayh, cohArrayh, pairArrayh, params, current, logger)
                                 save_dtt(df, str(current).replace(':','_'), filterid, components, mov_stack, logger)
-
+                        
         # THIS SHOULD BE IN THE API
         massive_update_job(db, jobs, "D")
 
@@ -575,7 +628,7 @@ def zoomerrdvv(mov_stack=None, dttname="M", components='ZZ', filterid=1,
     db = connect()
 
     start, end, datelist = build_movstack_datelist(db)
-
+  
     start = datetime.datetime.combine(start, datetime.time())
     end = datetime.datetime.combine(end, datetime.time())
 
@@ -664,9 +717,9 @@ def zoomerrdvv(mov_stack=None, dttname="M", components='ZZ', filterid=1,
             if showALL:
                 plt.plot(ALL.index, ALL[dttname], c='r',
                          label='ALL: $\delta v/v$ of the mean network')
-
+            
             tmp2 = allbut[dttname].resample('30T').median()
-
+            
             plt.plot(tmp2.index, tmp2, label="median")
             # tmp2.plot(label='mean',)
             etmp2 = allbut[errname].resample('30T').median()

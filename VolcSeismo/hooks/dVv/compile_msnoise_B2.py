@@ -28,7 +28,7 @@ This code plot dv/v with one point for 30min
 
 import os
 from msnoise import s000installer, api
-from .msnoise_mutations import process_job_type, zoomerrdvv
+from msnoise.msnoise_mutations import process_job_type, zoomerrdvv
 import subprocess
 
 def setup_msnoise(data_location, data_output, start, end,  start_ref, end_ref):
@@ -129,10 +129,13 @@ def compute_msnoise():
     db = api.connect()
 
     # Execute MSNoise jobs
-    process_job_type(db, 'CC', 'msnoise compute_cc')
-    process_job_type(db, 'STACK', 'msnoise stack -m')
-    process_job_type(db, 'MWCS', 'msnoise compute_zoom_mwcs')
-    process_job_type(db, 'DTT', 'msnoise compute_zoom_dtt')
+    try:
+        process_job_type(db, 'CC', 'msnoise compute_cc')
+        process_job_type(db, 'STACK', 'msnoise stack -m')
+        process_job_type(db, 'MWCS', 'msnoise compute_zoom_mwcs')
+        process_job_type(db, 'DTT', 'msnoise compute_zoom_dtt')
+    except subprocess.CalledProcessError:
+        print("Unable to compute jobs!")
 
 
 def main(data_location, data_output, start_date, end_date):
