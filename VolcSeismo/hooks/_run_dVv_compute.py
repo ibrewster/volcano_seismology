@@ -1,4 +1,5 @@
 import logging
+import multiprocessing
 import os
 import re
 import time
@@ -49,7 +50,7 @@ def get_lookups():
 
     with DBCursor() as cursor:
         cursor.execute("SELECT name,id FROM stations")
-        station_lookup = {x[0]: x[1] for x in cursor}
+        station_lookup = {x[0]: int(x[1]) for x in cursor}
 
         cursor.execute("SELECT site,id FROM volcanoes")
         volc_lookup = {x[0]: x[1] for x in cursor}
@@ -60,6 +61,10 @@ def get_lookups():
 STA_LOOKUP, VOLC_LOOKUP = None, None
 
 def init_lookups():
+    try:
+        multiprocessing.set_start_method('spawn')
+    except RuntimeError:
+        print("Context already set", multiprocessing.get_start_method())
     global STA_LOOKUP
     global VOLC_LOOKUP
 
@@ -76,17 +81,11 @@ def process_dVv(data_location, output_dir, start_str, end_str):
         pairs = pairs.str.split('._', expand = True)
         pairs[1] = pairs[1].str.replace('.', '', regex = False)
         del data['Pairs']
-        data['sta1'] = pairs[0].replace(STA_LOOKUP)
-        data['sta2'] = pairs[1].replace(STA_LOOKUP)
+        data['sta1'] = pairs[0].replace(STA_LOOKUP).astype(int)
+        data['sta2'] = pairs[1].replace(STA_LOOKUP).astype(int)
         values = data.to_dict(orient = 'records')
 
     return values
-
-# class FakeProc:
-    # def __init__(self, result = None):
-        # self._result = result
-    # def result(self):
-        # return self._result
 
 
 if __name__ == "__main__":
@@ -96,9 +95,9 @@ if __name__ == "__main__":
     data_path = os.path.abspath(os.path.join(os.path.dirname(__file__), 'dVv', 'processing'))
     volcs = [x for x in os.listdir(data_path) if os.path.isdir(os.path.join(data_path, x))]
 
+    start_date = UTCDateTime.now()
     end_date = UTCDateTime.now()
-    start_date = end_date - (60 * 60 * 24)
-
+    
     # Just process one day
     start_str = start_date.strftime('%Y-%m-%d')
     end_str = end_date.strftime('%Y-%m-%d')
@@ -128,19 +127,18 @@ if __name__ == "__main__":
                 print(f"********No results generated for {volc}")
             else:
                 for x in results:
-                    #x['volc'] = VOLC_LOOKUP[volc]
-                    x['volc'] = volc
+                    x['volc'] = VOLC_LOOKUP[volc]
 
                 all_values += results
         except Exception as e:
             logging.exception("Unable to generate results for %s: %s",
                               volc, str(e))
 
-    value_sql ="({volc}, {sta1}, {sta2}, {M}, {EM}, {A}, {EA}, {M0}, {EM0})"
+    value_sql ="({Date}, {volc}, {sta1}, {sta2}, {M}, {EM}, {A}, {EA}, {M0}, {EM0})"
 
     sql_values = [value_sql.format(**x) for x in all_values]
 
-    SQL = "INSERT INTO dvv (datetime,sta1,sta2,m,em,a,ea,m0,em0) VALUES\n"
+    SQL = "INSERT INTO dvv (datetime,volc,sta1,sta2,m,em,a,ea,m0,em0) VALUES\n"
     SQL += ",\n".join(sql_values)
     SQL += """ON CONFLICT (date,sta1,sta2) DO UPDATE SET
     m=EXCLUDED.m,
