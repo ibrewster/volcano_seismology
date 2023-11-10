@@ -66,8 +66,13 @@ def run(stream, times, station, metadata):
     # Now that we loaded the existing data, see how far back it goes
     data_times = data[0].times('timestamp') # Don't get UTCDateTimes directly, as that is WAY slow.
     data_start = UTCDateTime(data_times.min())
-    target_start = UTCDateTime(data_times.max()).replace(hour=0, minute=00, second=0, microsecond=0)
-    #target_start = UTCDateTime(data_times.max()) - (60 * 60)
+    #target_start = UTCDateTime(data_times.max()).replace(hour=0, minute=00, second=0, microsecond=0)
+    target_start = UTCDateTime(data_times.max()) - (60 * 60)
+    target_start = target_start.replace(second = 0, microsecond = 0)
+
+    # Find closest half-hour mark
+    approx = round(target_start.minute/30) *30
+    target_start = target_start.replace(minute = 0) + (60 * approx)
 
     # Make sure we have the full amount of data
     if data_start > target_start:

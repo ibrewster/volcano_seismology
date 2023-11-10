@@ -452,10 +452,11 @@ def compute_dtt(tArray, dtArray, errArray, cohArray, pairArray, params, current,
     logger.debug(
         "%s: exporting: %i pairs" % (current,
                                       len(pairArray)))
+    date_strings = [date.strftime('%Y-%m-%d %H:%M:%S') for date in Dates]
     df = pd.DataFrame(
         {'Pairs': Pairs, 'M': M, 'EM': EM, 'A': A, 'EA': EA,
-         'M0': M0, 'EM0': EM0},
-        index=Dates)
+         'M0': M0, 'EM0': EM0, 'Date': date_strings})
+    df.set_index('Date', inplace=True)
     del M, EM, A, EA, M0, EM0, Pairs, Dates, used
     del tArray, dtArray, errArray, cohArray, pairArray
     return df
@@ -489,13 +490,14 @@ def get_zoom_mwcs(session, station1, station2, filterid, components, date,
     file = os.path.join('MWCS', "%02i" % filterid, "%03i_DAYS" % mov_stack,
                         components, "%s_%s" % (station1, station2),
                         '%s.txt' % str(date).replace(':','_'))
-    print(date)
-    print(file)
+    if '00_00_00' in file:
+        print(date)
+        print(file)
     if os.path.isfile(file):
         df = pd.read_csv(
             file, delimiter=' ', header=None, index_col=0,
             names=['t', 'dt', 'err', 'coh'])
-        print(df)
+        #print(df)
         return df
     else:
         return pd.DataFrame()
@@ -548,6 +550,12 @@ def zoom_dtt(interval=1, loglevel="INFO"):
             data_date = get_results_all(db, netsta1, netsta2, filterid, components, [dday]) 
             hours = data_date.index
             ###
+            # Round down to the nearest 30 minutes and modify the second to be '00'
+            #rounded_index = hours - pd.to_timedelta(hours.minute % 30, unit='T')
+            #hours_rounded = rounded_index.map(lambda x: x.replace(second=0))
+            ###
+
+            #for current, current_rounded in zip(hours, hours_rounded):
             for current in hours:
                 stations = []
                 pairs = []
@@ -568,6 +576,7 @@ def zoom_dtt(interval=1, loglevel="INFO"):
                                 sta1 = netsta1+'.'
                                 sta2 = netsta2+'.'
                                 df = get_zoom_mwcs(db, netsta1, netsta2, filterid, components, current, mov_stack)
+
                                 if not len(df):
                                     continue
                                 if first:
@@ -578,9 +587,11 @@ def zoom_dtt(interval=1, loglevel="INFO"):
                                         df, sta1, sta2, interstations, params,logger, dtArrayh, errArrayh, cohArrayh, pairArrayh)  
                                                               
                             if not first:
+                                #df = compute_dtt(tArrayh, dtArrayh, errArrayh, cohArrayh, pairArrayh, params, current_rounded, logger)
+                                #save_dtt(df, str(current_rounded).replace(':','_'), filterid, components, mov_stack, logger)
                                 df = compute_dtt(tArrayh, dtArrayh, errArrayh, cohArrayh, pairArrayh, params, current, logger)
                                 save_dtt(df, str(current).replace(':','_'), filterid, components, mov_stack, logger)
-                        
+
         # THIS SHOULD BE IN THE API
         massive_update_job(db, jobs, "D")
 
@@ -630,8 +641,8 @@ def zoomerrdvv(mov_stack=None, dttname="M", components='ZZ', filterid=1,
     start, end, datelist = build_movstack_datelist(db)
   
     start = datetime.datetime.combine(start, datetime.time())
-    end = datetime.datetime.combine(end, datetime.time())
-
+    end = datetime.datetime.combine(end, datetime.time(hour=23, minute=59, second=59))
+    
     if mov_stack != 0:
         mov_stacks = [mov_stack, ]
     else:

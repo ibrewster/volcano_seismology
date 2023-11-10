@@ -78,11 +78,12 @@ def process_dVv(data_location, output_dir, start_str, end_str):
     else:
         data = pandas.read_csv(tt_file, parse_dates = ['Date'])
         pairs = data['Pairs'].str.replace(NET_ID, '', regex = True)
+        pairs = pairs.replace(['ALL'], [None])
         pairs = pairs.str.split('._', expand = True)
         pairs[1] = pairs[1].str.replace('.', '', regex = False)
         del data['Pairs']
-        data['sta1'] = pairs[0].replace(STA_LOOKUP).astype(int)
-        data['sta2'] = pairs[1].replace(STA_LOOKUP).astype(int)
+        data['sta1'] = pairs[0].replace(STA_LOOKUP)
+        data['sta2'] = pairs[1].replace(STA_LOOKUP)
         values = data.to_dict(orient = 'records')
 
     return values
@@ -97,7 +98,7 @@ if __name__ == "__main__":
 
     start_date = UTCDateTime.now()
     end_date = UTCDateTime.now()
-    
+
     # Just process one day
     start_str = start_date.strftime('%Y-%m-%d')
     end_str = end_date.strftime('%Y-%m-%d')
@@ -108,6 +109,9 @@ if __name__ == "__main__":
     all_values = []
     with ProcessPoolExecutor(initializer = init_lookups) as executor:
         for volc in volcs:
+            if volc == 'Unknown':
+                continue
+
             data_location = os.path.abspath(os.path.join(data_path, volc, 'data'))
             output_dir = os.path.abspath(os.path.join(data_location, '..', 'Output'))
             try:
@@ -134,18 +138,29 @@ if __name__ == "__main__":
             logging.exception("Unable to generate results for %s: %s",
                               volc, str(e))
 
-    value_sql ="({Date}, {volc}, {sta1}, {sta2}, {M}, {EM}, {A}, {EA}, {M0}, {EM0})"
+    value_sql ="(%(Date{idx})s, $(volc{idx})s, $(sta1{idx})s, %(sta2{idx})s, %(M{idx})s, %(EM{idx})s, %(A{idx})s, %(EA{idx})s, %(M0{idx})s, %(EM0{idx})s)"
 
-    sql_values = [value_sql.format(**x) for x in all_values]
+    sql_placeholders = []
+    args = {}
+    for idx, value_dict in enumerate(all_values):
+        sql_placeholders.append(value_sql.format(idx = idx))
+        for key, value in value_dict:
+            key += str(idx)
+            args[key] = value
+
 
     SQL = "INSERT INTO dvv (datetime,volc,sta1,sta2,m,em,a,ea,m0,em0) VALUES\n"
-    SQL += ",\n".join(sql_values)
-    SQL += """ON CONFLICT (date,sta1,sta2) DO UPDATE SET
+    SQL += ",\n".join(sql_placeholders)
+    SQL += """ON CONFLICT (datetime,sta1,sta2) DO UPDATE SET
     m=EXCLUDED.m,
     em=EXCLUDED.em,
     a=EXCLUDED.a,
     ea=EXCLUDED.ea,
     m0=EXCLUDED.m0,
     em0=EXCLUDED.em0"""
+
+    with DBCursor() as cursor:
+        cursor.execute(SQL, args)
+        cursor.connection.commit()
 
     print("***Complete in", (time.time() - t1) / 60)
