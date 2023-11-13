@@ -63,17 +63,27 @@ def run(stream, times, station, metadata):
     except FileNotFoundError:
         data = stream
 
+    # Find the last time in this stream. Could be any of the traces, so...
+    data_end = UTCDateTime(0)
+    for tr in stream:
+        data_times = tr.times('timestamp')
+        data_end = max(data_end, UTCDateTime(data_times.max()))
 
-    # Now that we loaded the existing data, see how far back it goes
-    data_times = data[0].times('timestamp') # Don't get UTCDateTimes directly, as that is WAY slow.
-    data_start = UTCDateTime(data_times.min())
-    #target_start = UTCDateTime(data_times.max()).replace(hour=0, minute=00, second=0, microsecond=0)
     target_start = UTCDateTime(data_times.max()) - (60 * 60)
     target_start = target_start.replace(second = 0, microsecond = 0)
 
     # Find closest half-hour mark
     approx = round(target_start.minute/30) *30
     target_start = target_start.replace(minute = 0) + (60 * approx)
+
+    # Discard any old data, so we know if we have current or not.
+    data = data.trim(target_start)
+
+    # Now that we loaded the existing data, see how far back it *actually* goes
+    # Theoretically this *should* be target start now, since we just trimmed, but
+    # if the data hasn't been updated in a while, it may be different.
+    data_times = data[0].times('timestamp') # Don't get UTCDateTimes directly, as that is WAY slow.
+    data_start = UTCDateTime(data_times.min())
 
     # Make sure we have the full amount of data
     if data_start > target_start:
@@ -84,17 +94,18 @@ def run(stream, times, station, metadata):
             for tr in stream:
                 tr.data = tr.data.astype(float)
 
-                data += stream
+            data += stream
 
     data = data.merge(method = 1, fill_value = 'latest',
                       interpolation_samples = -1)
-    
+
+    # Make sure we are exactly on the start mark.
+    data = data.trim(target_start, nearest_sample = False)
+
     # Replace any NaN values with zero
     for tr in data:
         tr.interpolate(method='zero', sampling_rate=tr.meta['sampling_rate'])
 
-    data = data.trim(target_start)
-    
 
     # And write out the new data file
     data.write(file, format = "MSEED")

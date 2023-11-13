@@ -134,7 +134,7 @@ if __name__ == "__main__":
                               volc, str(e))
 
     value_sql ="(%(Date{idx})s, %(volc{idx})s, %(sta1{idx})s, %(sta2{idx})s, %(M{idx})s, %(EM{idx})s, %(A{idx})s, %(EA{idx})s, %(M0{idx})s, %(EM0{idx})s)"
-    
+
     #value_sql ="(%(Date)s, %(volc)s, %(sta1)s, %(sta2)s, %(M)s, %(EM)s, %(A)s, %(EA)s, %(M0)s, %(EM0)s)"
 
     sql_placeholders = []
@@ -163,7 +163,7 @@ if __name__ == "__main__":
             cursor.execute(SQL, args)
         except Exception as e:
             print(e)
-                
+
         cursor.connection.commit()
 
     print("***Complete in", (time.time() - t1) / 60)
