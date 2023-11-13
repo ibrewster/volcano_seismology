@@ -7,17 +7,30 @@ from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
 
 try:
+    from . import config as CFG_FILE
     from .config import config, stations
     from .hooks import run_hooks
     from .waveform import load
 except ImportError:
     # Not running as a module
+    import config as CFG_FILE
     from config import config, stations
     from hooks import run_hooks
     from waveform import load
 
 from obspy import UTCDateTime
+from obspy.clients.earthworm import Client as WClient
 
+def get_availability():
+    winston_url = config['WINSTON']['url']
+    winston_port = config['WINSTON'].getint('port', 16022)
+    
+    logging.info("Pulling availability for all stations")
+    wclient = WClient(winston_url, winston_port)
+    logging.info("Done")
+    avail = wclient.get_availability()
+    avail = {(x[1], x[3]): x for x in avail}
+    return avail
 
 def run(ENDTIME = None):
     print("running")
@@ -68,7 +81,8 @@ def run(ENDTIME = None):
 
     # Run the hook scripts
     procs = []
-    with ProcessPoolExecutor() as executor:
+    avail = get_availability()
+    with ProcessPoolExecutor(initializer=set_availability, initargs=(avail, )) as executor:
         for start, end, locs in gen_times:
             # Create a temporary directory that we can use to avoid duplicating effort
             # if the same station appears for multiple volcanos.
@@ -141,7 +155,7 @@ def _process_data(STA, sta_dict, STARTTIME, ENDTIME):
     NET = sta_dict.get('NET', 'AV')
 
     try:
-        stream, waveform_times = load(NET, STA, '--', CHAN, STARTTIME, ENDTIME)
+        stream, waveform_times = load(NET, STA, '--', CHAN, STARTTIME, ENDTIME, CFG_FILE.availability)
     except TypeError:
         logging.warning(f"Unable to retrieve data for station {STA}, {STARTTIME} to {ENDTIME}")
         return True
@@ -152,6 +166,8 @@ def _process_data(STA, sta_dict, STARTTIME, ENDTIME):
 
     run_hooks(stream, waveform_times, sta_dict)
 
+def set_availability(avail):
+    CFG_FILE.availability = avail
 
 if __name__ == "__main__":
     STARTTIME = UTCDateTime('2023-10-01T02:10:10')
@@ -166,7 +182,8 @@ if __name__ == "__main__":
 
     print(gen_times)
     procs = []
-    with ProcessPoolExecutor() as executor:
+    avail = get_availability()
+    with ProcessPoolExecutor(initializer=set_availability, initargs=(avail, )) as executor:
         for start, end, locs in gen_times:
             with tempfile.TemporaryDirectory() as tempdir:
                 print("Created temporary directory", tempdir)
@@ -186,8 +203,9 @@ if __name__ == "__main__":
 
                     # And do it
                     ###############DEBUG###########
-                    # _process_data(loc, loc_info, start, end)
-                    # continue
+                    CFG_FILE.availability = avail
+                    _process_data(loc, loc_info, start, end)
+                    continue
                     #############DEBUG############
                     future = executor.submit(_process_data, loc,
                                              loc_info, start, end)

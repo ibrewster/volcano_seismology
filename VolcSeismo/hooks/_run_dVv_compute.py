@@ -6,6 +6,7 @@ import time
 
 from concurrent.futures import ProcessPoolExecutor
 
+import numpy
 import pandas
 import psycopg
 
@@ -42,15 +43,11 @@ class DBCursor():
         self._conn.close()
 
 def get_lookups():
-    # Get a list of stations and associated volcanoes
-    SQL = """
-    SELECT name,id
-    FROM stations
-    """
-
     with DBCursor() as cursor:
         cursor.execute("SELECT name,id FROM stations")
         station_lookup = {x[0]: int(x[1]) for x in cursor}
+        station_lookup[numpy.nan] = station_lookup['__AVG']
+        station_lookup[None] = station_lookup['__AVG']
 
         cursor.execute("SELECT site,id FROM volcanoes")
         volc_lookup = {x[0]: x[1] for x in cursor}
@@ -120,8 +117,6 @@ if __name__ == "__main__":
                 pass
 
             proc = executor.submit(process_dVv, data_location, output_dir, start_str, end_str)
-            # ret = process_dVv(data_location, output_dir, start_str, end_str)
-            # proc = FakeProc(ret)
             procs.append((volc, proc))
 
     for volc, proc in procs:
@@ -138,20 +133,24 @@ if __name__ == "__main__":
             logging.exception("Unable to generate results for %s: %s",
                               volc, str(e))
 
-    value_sql ="(%(Date{idx})s, $(volc{idx})s, $(sta1{idx})s, %(sta2{idx})s, %(M{idx})s, %(EM{idx})s, %(A{idx})s, %(EA{idx})s, %(M0{idx})s, %(EM0{idx})s)"
+    value_sql ="(%(Date{idx})s, %(volc{idx})s, %(sta1{idx})s, %(sta2{idx})s, %(M{idx})s, %(EM{idx})s, %(A{idx})s, %(EA{idx})s, %(M0{idx})s, %(EM0{idx})s)"
+    
+    #value_sql ="(%(Date)s, %(volc)s, %(sta1)s, %(sta2)s, %(M)s, %(EM)s, %(A)s, %(EA)s, %(M0)s, %(EM0)s)"
 
     sql_placeholders = []
     args = {}
     for idx, value_dict in enumerate(all_values):
         sql_placeholders.append(value_sql.format(idx = idx))
-        for key, value in value_dict:
+        for key, value in value_dict.items():
             key += str(idx)
             args[key] = value
 
 
     SQL = "INSERT INTO dvv (datetime,volc,sta1,sta2,m,em,a,ea,m0,em0) VALUES\n"
     SQL += ",\n".join(sql_placeholders)
-    SQL += """ON CONFLICT (datetime,sta1,sta2) DO UPDATE SET
+    #SQL += value_sql
+    SQL += """
+    ON CONFLICT (datetime,volc,sta1,sta2) DO UPDATE SET
     m=EXCLUDED.m,
     em=EXCLUDED.em,
     a=EXCLUDED.a,
@@ -160,7 +159,11 @@ if __name__ == "__main__":
     em0=EXCLUDED.em0"""
 
     with DBCursor() as cursor:
-        cursor.execute(SQL, args)
+        try:
+            cursor.execute(SQL, args)
+        except Exception as e:
+            print(e)
+                
         cursor.connection.commit()
 
     print("***Complete in", (time.time() - t1) / 60)

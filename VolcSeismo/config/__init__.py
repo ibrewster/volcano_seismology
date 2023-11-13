@@ -14,6 +14,7 @@ def load_config():
 
 
 config = load_config()
+availability = None
 
 try:
     from .location_config import Locations, Stations

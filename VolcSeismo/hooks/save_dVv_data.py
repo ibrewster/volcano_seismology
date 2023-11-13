@@ -12,6 +12,7 @@ from obspy import UTCDateTime
 
 from VolcSeismo.waveform import load
 from VolcSeismo.web import utils
+from VolcSeismo import config
 
 
 volc_lookup = {}
@@ -52,7 +53,7 @@ def run(stream, times, station, metadata):
 
     # Convert to int32 for compatibility with the MSEED output format
     for tr in stream:
-        tr.data = tr.data.astype(numpy.int32)
+        tr.data = tr.data.astype(float)
 
     file = os.path.join(datafile_loc, "data.mseed")
 
@@ -76,19 +77,24 @@ def run(stream, times, station, metadata):
 
     # Make sure we have the full amount of data
     if data_start > target_start:
-        stream, waveform_times = load(NET, STA, '--', CHAN, target_start, data_start)
+        stream, waveform_times = load(NET, STA, '--', CHAN, target_start, data_start, config.availability)
 
         # If we managed to get more data, append it to the data file.
         if stream:
             for tr in stream:
-                tr.data = tr.data.astype(numpy.int32)
+                tr.data = tr.data.astype(float)
 
                 data += stream
 
     data = data.merge(method = 1, fill_value = 'latest',
                       interpolation_samples = -1)
+    
+    # Replace any NaN values with zero
+    for tr in data:
+        tr.interpolate(method='zero', sampling_rate=tr.meta['sampling_rate'])
 
-    data = data.trim(target_start, nearest_sample = False)
+    data = data.trim(target_start)
+    
 
     # And write out the new data file
     data.write(file, format = "MSEED")
