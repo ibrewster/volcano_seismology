@@ -2,6 +2,7 @@ import logging
 import multiprocessing
 import os
 import re
+import sys
 import time
 
 from concurrent.futures import ProcessPoolExecutor
@@ -87,6 +88,7 @@ def process_dVv(data_location, output_dir, start_str, end_str):
 
 
 if __name__ == "__main__":
+    os.environ['PATH'] = os.path.dirname(sys.executable) +  os.pathsep + os.environ['PATH']
     init_lookups()
 
     t1 = time.time()
@@ -132,6 +134,10 @@ if __name__ == "__main__":
         except Exception as e:
             logging.exception("Unable to generate results for %s: %s",
                               volc, str(e))
+
+    if not all_values:
+        print("*****WARNING***** No ouput generated")
+        exit(1)
 
     value_sql ="(%(Date{idx})s, %(volc{idx})s, %(sta1{idx})s, %(sta2{idx})s, %(M{idx})s, %(EM{idx})s, %(A{idx})s, %(EA{idx})s, %(M0{idx})s, %(EM0{idx})s)"
 
