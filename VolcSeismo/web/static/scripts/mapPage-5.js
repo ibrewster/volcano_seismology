@@ -305,20 +305,26 @@ function setTitle(parentChart) {
     var filename = "Volcano Seismology ";
     filename += dateFrom.replace(/\//g, '-') + " to ";
     filename += dateTo.replace(/\//g, '-');
+
+    const height=$(graphDiv).hasClass('withdVv')?1280:1024;
+
     var newConfig = {
         'toImageButtonOptions': {
             'format': 'svg',
             'filename': filename,
-            'height': 800,
+            'height': height,
             'width': 600,
             'scale': 1.5,
         }
     }
 
+    const label_y=55.296;
+    const label_percent=(height-label_y)/height;
+
     var title_dict = {
         'text': plot_title,
         'x': .06,
-        'y': .946,
+        'y': label_percent,
         'xanchor': 'left',
         'yanchor': 'bottom',
         'font': {
@@ -878,10 +884,9 @@ function graphResults(respData, dest) {
     else {
         setGraphRange.call(dateFrom[0]);
     }
-    setTitle(dest);
 
     Plotly.Plots.resize(graphDiv[0]);
-
+    setTitle(dest);
 }
 
 function makePlotDataDict(x, y, idx) {
