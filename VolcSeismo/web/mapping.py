@@ -789,7 +789,8 @@ def get_dvv_pairs():
         cursor.execute(SQL, [staid, [staid]])
         pairs = [x[0] for x in cursor]
         
-    return pairs
+    json_pairs = ujson.dumps(pairs)
+    return json_pairs
 
 
     
