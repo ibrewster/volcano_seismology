@@ -771,6 +771,27 @@ def get_dvv_data():
     str_data = ujson.dumps(result)
     return flask.Response(response=str_data, status=200,
                           mimetype="application/json")
+
+
+@app.route('/getdVvPairs')
+def get_dvv_pairs():
+    sta = flask.request.args['station']
+    SQL = '''SELECT distinct
+        (SELECT name FROM stations WHERE id IN (sta1,sta2) AND id!=%s) pair
+    FROM dvv
+    WHERE %s <@ sta_pair
+    ORDER BY 1'''
+    
+    with utils.db_cursor() as cursor:
+        cursor.execute('SELECT id FROM stations WHERE name=%s', (sta, ))
+        staid = cursor.fetchone()[0]
+        
+        cursor.execute(SQL, [staid, [staid]])
+        pairs = [x[0] for x in cursor]
+        
+    return pairs
+
+
     
 @app.route('/listRegionEntropies')
 def list_region_entropies():

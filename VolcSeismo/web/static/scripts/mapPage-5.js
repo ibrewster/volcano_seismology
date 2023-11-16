@@ -19,6 +19,7 @@ var menuMode = false;
 $(document).ready(function() {
 
     $(document).on('change', '#volcSelect', setMapLocation);
+    $(document).on('change','.dvvSelect',selectdVvPair);
     $(document).on('click', 'img.closeBtn', closeGraph);
     $(document).on('click', 'span.dateBtns button', dateRangeClicked);
     $(document).on('click', 'input.channelOption', generateGraphs);
@@ -192,14 +193,7 @@ function generateGraphs() {
     $.get('get_graph_data', reqParams)
         .done(function(data) {
             if(dVvStation!==null){
-                $.getJSON('getdVvData',{sta1:dVvStation, sta2:station})
-                .done(function(dvvData){
-                    data['data']['dVvDates']=dvvData['date'];
-                    data['data']['dVvValues']=dvvData['m'];
-                    data['data']['dVvError1']=dvvData['em1'];
-                    data['data']['dVvError2']=dvvData['em2'];
-                    graphResults(data, dest);
-                });
+                getdVvData(dest,data,station,dVvStation);
             }
             else{
                 graphResults(data, dest);
@@ -529,8 +523,18 @@ function dateRangeClicked() {
     $(this).addClass('active');
 }
 
-function getdVvData(sta1,sta2){
+function getdVvData(dest,data,sta1,sta2){
+    const future=$.getJSON('getdVvData',{sta1:sta1, sta2:sta2})
+    future.done(function(dvvData){
+        dVvStation=sta2;
+        data['data']['dVvDates']=dvvData['date'];
+        data['data']['dVvValues']=dvvData['m'];
+        data['data']['dVvError1']=dvvData['em1'];
+        data['data']['dVvError2']=dvvData['em2'];
+        graphResults(data, dest);
+    });
 
+    return future;
 }
 
 function showStationGraphs(event,volc) {
@@ -561,15 +565,7 @@ function showStationGraphs(event,volc) {
             let data=$(this).data('rawData');
             let plotStation=$(this).data('station');
             let plotDiv=$(this);
-            $.getJSON('getdVvData',{sta1:station, sta2:plotStation})
-            .done(function(dvvData){
-                dVvStation=station;
-                data['data']['dVvDates']=dvvData['date'];
-                data['data']['dVvValues']=dvvData['m'];
-                data['data']['dVvError1']=dvvData['em1'];
-                data['data']['dVvError2']=dvvData['em2'];
-                graphResults(data, plotDiv);
-            });
+            getdVvData(plotDiv,data,station,plotStation)
         });
         return;
     }
@@ -609,6 +605,29 @@ function showStationGraphs(event,volc) {
     chartDiv.find('input.channelOption').first().click();
 }
 
+function adddVvSelect(data,title){
+    title.append(' &nbsp;dVv Pair:');
+    const select=$('<select class="dvvSelect">');
+    select.append('<option>');
+    for(let opt of data){
+        let option=$('<option>').text(opt);
+        select.append(option);
+    }
+    title.append(select);
+    select.change();
+}
+
+function selectdVvPair(){
+    const pair=this.value;
+    
+    if(pair=='') {return;}
+
+    const dest=$(this).closest('div.chart');
+    const data=dest.data('rawData');
+    const station=dest.data('station');
+    getdVvData(dest,data,station,pair);
+}
+
 function createChartHeader(station, site, channels) {
     divid += 1;
     var chartHeader = $('<div class=chartHeader>');
@@ -618,6 +637,11 @@ function createChartHeader(station, site, channels) {
     chartTitle.append('<b><span class="stationName">' + station +
         "</b>"
     );
+    
+    $.getJSON('getdVvPairs',{'station':station})
+    .done(function(data){
+        adddVvSelect(data,chartTitle);
+    })
 
     //close button
     chartHeader.append("<img src='static/img/RedClose.svg' class='closeBtn noPrint'/>")
@@ -843,7 +867,7 @@ function graphResults(respData, dest) {
     }
     else{
         graphDiv.removeClass('withdVv');
-        graphDiv.after('<div class="nodVv">To plot dVv, alt/option click a second station</div>');
+        graphDiv.after('<div class="nodVv">To plot dVv, select a station from the pull-down in the title</div>');
     }
 
     var layout = generateSubgraphLayout(graph_data, graph_labels);
