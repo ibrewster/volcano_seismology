@@ -8,6 +8,8 @@ import uuid
 from datetime import datetime, timedelta, timezone
 from io import StringIO
 
+import pandas
+
 from . import app, compressor
 from . import utils
 from .utils import stations
@@ -745,7 +747,31 @@ FROM
         print("Got", len(graph_data['dates']), "rows in", time.time() - t1, "seconds")
         return graph_data
 
-
+@app.route('/getdVvData')
+def get_dvv_data():
+    sta1 = flask.request.args['sta1']
+    sta2 = flask.request.args['sta2']
+    
+    SQL = "SELECT datetime, m, em FROM dvv WHERE sta_pair @> %s ORDER BY datetime;"
+    with utils.db_cursor() as cursor:
+        
+        cursor.execute('SELECT id FROM stations WHERE name in %s', ((sta1, sta2), ) )
+        pair = [x[0] for x in cursor]
+        
+        cursor.execute(SQL, [pair, ])
+        dvv_data = pandas.DataFrame(cursor, columns=['date', 'm', 'em'])
+        #dvv_data = cursor.fetchall()
+        
+    dvv_data['em1'] = dvv_data['m'] - dvv_data['em']
+    dvv_data['em2'] = dvv_data['m'] + dvv_data['em']
+    dvv_data['date'] = dvv_data['date'].dt.strftime('%Y-%m-%d %H:%M:%S')
+    del dvv_data['em']
+    
+    result = dvv_data.to_dict('list')
+    str_data = ujson.dumps(result)
+    return flask.Response(response=str_data, status=200,
+                          mimetype="application/json")
+    
 @app.route('/listRegionEntropies')
 def list_region_entropies():
     bounds = json.loads(flask.request.args['bounds'])

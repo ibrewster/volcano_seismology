@@ -3,6 +3,7 @@ var global_graph_div = null;
 var divid = 0;
 var volcano;
 var vectorGuard = false;
+let dVvStation=null;
 
 var iconColors = {
     'campaign': '#0CDA3B',
@@ -105,15 +106,6 @@ function initMap() {
         isFractionalZoomEnabled: true
     });
 
-    // map.addListener('center_changed', function() {
-    //     $('#locations div .tab').removeClass('current');
-    //     getAnomaliesDebounce();
-    // });
-
-    // map.addListener('zoom_changed', function() {
-    //     getAnomaliesDebounce();
-    // });
-
     // Get a list of stations to create markers for
     $.get('list_stations', map_stations);
 
@@ -199,7 +191,19 @@ function generateGraphs() {
 
     $.get('get_graph_data', reqParams)
         .done(function(data) {
-            graphResults(data, dest);
+            if(dVvStation!==null){
+                $.getJSON('getdVvData',{sta1:dVvStation, sta2:station})
+                .done(function(dvvData){
+                    data['data']['dVvDates']=dvvData['date'];
+                    data['data']['dVvValues']=dvvData['m'];
+                    data['data']['dVvError1']=dvvData['em1'];
+                    data['data']['dVvError2']=dvvData['em2'];
+                    graphResults(data, dest);
+                });
+            }
+            else{
+                graphResults(data, dest);
+            }
         })
         .fail(function(a,b,c){
             alert("Unable to load plot data!");
@@ -327,6 +331,22 @@ function setTitle(parentChart) {
     Plotly.react(graphDiv, graphDiv.data, graphDiv.layout, newConfig);
 }
 
+function findRangeIndexes(array,min,max) {
+    let start=0,stop=array.length-1;
+    let foundStart=false;
+    for (let i=0;i<array.length;i++) {
+        let val=array[i];
+        if(!foundStart && min<=val) {
+            foundStart=true;
+            start=i;
+        } else if(val>max) {
+            stop=i;
+            break;
+        }
+    }
+    return [start,stop];
+}
+
 function rescaleY(parentChart, dateFrom, dateTo, run) {
     if (typeof(run) == 'undefined')
         run = true
@@ -335,78 +355,109 @@ function rescaleY(parentChart, dateFrom, dateTo, run) {
     const dateFromString = formatFakeISODateString(dateFrom);
     const dateToString = formatFakeISODateString(dateTo);
 
-    // var fromMonth = dateFrom.getUTCMonth() + 1;
-    // if (fromMonth < 10)
-    //     fromMonth = "0" + fromMonth;
-    // var fromDay = dateFrom.getUTCDate();
-    // if (fromDay < 10)
-    //     fromDay = "0" + fromDay;
-    // var dateFromString = dateFrom.getUTCFullYear() + '-' + fromMonth + "-" + fromDay;
-
-
-    // var toMonth = dateTo.getUTCMonth() + 1;
-    // if (toMonth < 10)
-    //     toMonth = "0" + toMonth;
-
-    // var toDay = dateTo.getUTCDate();
-    // if (toDay < 10)
-    //     toDay = "0" + toDay;
-    // var dateToString = dateTo.getUTCFullYear() + '-' + toMonth + "-" + toDay;
-    // dateToString += 'T23:59:59'
-
-    var graphs = parentChart.find('div.plotlyPlot:visible')[0]
-
-    var dateData = graphs.data[0]['x']; //same for all plots, so just use the first
-
-    var startIdx = 0; //technically should be end of list, since if nothing is greater than the start value, then the start value is past the end,
-    //however we'll go with zero so we don't wind up with an empty list, even if the zoom range is beyond the end of the list.
-    var startValue = dateData.find(function(element) {
-        return element >= dateFromString;
-    });
-    if (typeof(startValue !== 'undefined'))
-        startIdx = dateData.indexOf(startValue);
-
-    var stopIdx = dateData.length - 1; //minus 1 because index is 0 based, length is 1 based
-    //this will return the value or undefined, so I need to find the index of the value and handle undefined.
-    var stopValue = dateData.find(function(element) {
-        return element >= dateToString
-    });
-
-    if (typeof(stopValue) !== 'undefined') //no number greater than this in list, this is the greatest!
-        stopIdx = dateData.indexOf(stopValue); //we know this is in the list, because we found it above.
-
-    var layouts = {};
-    //apparently the data and axis are just associated by order
+    const graphs = parentChart.find('div.plotlyPlot:visible')[0]
+    const graphData=graphs.data;
     var all_yaxis = filtered_keys(graphs.layout, /yaxis?/).sort();
 
-    for (var i = 0; i < graphs.data.length; i++) {
-        //possible that some subgraphs don't have a yAxis (polar, for example)
-        if (!graphs.data[i].hasOwnProperty('y'))
-            continue;
-
-        var yData = graphs.data[i]['y'].slice(startIdx, stopIdx + 1);
-        var yAxis = all_yaxis.shift();
-
-        var max = -1 * Number.MAX_VALUE;
-        var min = Number.MAX_VALUE;
-        for (var j = 0; j < yData.length; j++) {
-            if (yData[j] > max) { max = yData[j]; }
-            if (yData[j] < min) { min = yData[j]; }
-        }
-
-        var spread = max - min;
-        var padding = .05 * spread; //5% total value buffer
-        //leave a small buffer on either side when displaying
-        max += padding;
-        if (min != 0)
-            min -= padding;
-
-        layouts[yAxis + '.range'] = [min, max];
+    const axis_lookup={}
+    //create a y-axis lookup dict
+    for (let axis of all_yaxis){
+        axis_lookup[axis]=[Number.MAX_VALUE,-1 * Number.MAX_VALUE];
     }
 
-    //See if we should display the "no data" label
-    var lastDataDate = new Date(dateData[dateData.length - 1])
+    let lastDataDate=graphData[0]['x'][graphData[0]['x'].length-1];
+    for (let thisData of graphData) {
+        if (!thisData.hasOwnProperty('y')) {continue};
 
+        let dates=thisData.x;
+
+        if(dates[dates.length-1]>lastDataDate){lastDataDate=dates[dates.length-1];}
+
+        let start,stop;
+        [start,stop]=findRangeIndexes(dates,dateFromString,dateToString);
+
+        let yaxis = typeof(thisData.yaxis)=='undefined'?'':thisData.yaxis.replace('y','');
+        yaxis = 'yaxis' + yaxis;
+
+        let yData=thisData.y.slice(start, stop + 1);
+
+        // the following lines *look* cleaner, but I'm thinking the 
+        // single loop is going to be faster...
+        // const maxY = arr.reduce((a, b) => Math.max(a, b), -Infinity);
+        // const minY = arr.reduce((a, b) => Math.min(a, b), Infinity);
+
+        // if(maxY>axis_lookup[yaxis][1]) {axis_lookup[yaxis][1]=maxY}
+        // if(minY<axis_lookup[yaxis][0]) {axis_lookup[yaxis][0]=yval}
+
+        for(let yval of yData){
+            if(yval>axis_lookup[yaxis][1]) {axis_lookup[yaxis][1]=yval}
+            if(yval<axis_lookup[yaxis][0]) {axis_lookup[yaxis][0]=yval}
+        }
+    }
+
+    var layouts = {};
+    for (let axis in axis_lookup){
+        let max,min;
+        [max,min]=axis_lookup[axis];
+
+        const spread=max-min;
+        const padding=.05*spread;
+        max += padding;
+
+        if (min !=0 ){
+            min -= padding;
+        }
+
+        layouts[axis + '.range'] = [min, max];
+    }
+
+
+    // var dateData = graphs.data[0]['x']; //same for all plots, so just use the first
+
+    // var startIdx = 0; //technically should be end of list, since if nothing is greater than the start value, then the start value is past the end,
+    // //however we'll go with zero so we don't wind up with an empty list, even if the zoom range is beyond the end of the list.
+    // var startValue = dateData.find(function(element) {
+    //     return element >= dateFromString;
+    // });
+    // if (typeof(startValue !== 'undefined'))
+    //     startIdx = dateData.indexOf(startValue);
+
+    // var stopIdx = dateData.length - 1; //minus 1 because index is 0 based, length is 1 based
+    // //this will return the value or undefined, so I need to find the index of the value and handle undefined.
+    // var stopValue = dateData.find(function(element) {
+    //     return element >= dateToString
+    // });
+
+    // if (typeof(stopValue) !== 'undefined') //no number greater than this in list, this is the greatest!
+    //     stopIdx = dateData.indexOf(stopValue); //we know this is in the list, because we found it above.
+
+       
+
+    // for (var i = 0; i < graphs.data.length; i++) {
+    //     //possible that some subgraphs don't have a yAxis (polar, for example)
+
+
+    //     var yData = graphs.data[i]['y'].slice(startIdx, stopIdx + 1);
+    //     var yAxis = all_yaxis.shift();
+
+    //     var max = -1 * Number.MAX_VALUE;
+    //     var min = Number.MAX_VALUE;
+    //     for (var j = 0; j < yData.length; j++) {
+    //         if (yData[j] > max) { max = yData[j]; }
+    //         if (yData[j] < min) { min = yData[j]; }
+    //     }
+
+    //     var spread = max - min;
+    //     var padding = .05 * spread; //5% total value buffer
+    //     //leave a small buffer on either side when displaying
+    //     max += padding;
+    //     if (min != 0)
+    //         min -= padding;
+
+    //     layouts[yAxis + '.range'] = [min, max];
+    // }
+
+    //See if we should display the "no data" label
     if (lastDataDate < dateFrom) {
         parentChart.find('div.plotlyPlot:visible').addClass("noData");
     } else {
@@ -472,6 +523,10 @@ function dateRangeClicked() {
     $(this).addClass('active');
 }
 
+function getdVvData(sta1,sta2){
+
+}
+
 function showStationGraphs(event,volc) {
     //we clicked on a station. Switch to the station graphs tab
     if(!$('#stationsTab').hasClass('current'))
@@ -493,8 +548,31 @@ function showStationGraphs(event,volc) {
         $('#volcSelect').val(volc).change()
     }
 
+    var visible_charts = $('div.chart:visible');
+    var dvvSelect = typeof(event)=='undefined' ? false : event.altKey;
+    if(dvvSelect){
+        visible_charts.each(function(){
+            let data=$(this).data('rawData');
+            let plotStation=$(this).data('station');
+            let plotDiv=$(this);
+            $.getJSON('getdVvData',{sta1:station, sta2:plotStation})
+            .done(function(dvvData){
+                dVvStation=station;
+                data['data']['dVvDates']=dvvData['date'];
+                data['data']['dVvValues']=dvvData['m'];
+                data['data']['dVvError1']=dvvData['em1'];
+                data['data']['dVvError2']=dvvData['em2'];
+                graphResults(data, plotDiv);
+            });
+        });
+        return;
+    }
+    else{
+        dVvStation=null;
+    }
+
     var available_charts = $('div.chart:hidden')
-    var visible_charts = $('div.chart:visible')
+    
     var add_chart = typeof(event) == 'undefined' ? false : event.shiftKey;
     if (add_chart && visible_charts.length == 3) {
         alert("Sorry, but due to browser limitations, only three sets of graphs can be shown at once");
@@ -519,10 +597,7 @@ function showStationGraphs(event,volc) {
         chartDiv = createChartDiv(station, site, channels);
         $('#content').append(chartDiv);
     }
-
-    //set the anomaly graph source
-    //chartDiv.find('div.anomalies.short img').attr('src', `static/img/anomalies/${station}-short.png`);
-    //chartDiv.find('div.anomalies.long img').attr('src', `static/img/anomalies/${station}-long.png`);
+    chartDiv.data('station',station);
 
     //trigger generation of the default set of graphs
     chartDiv.find('input.channelOption').first().click();
@@ -712,7 +787,9 @@ function plotGraph(div, data, layout, config) {
 }
 
 function graphResults(respData, dest) {
-    //find the div for the east/west graph
+    // save the response data for potential future use
+    dest.data('rawData',respData);
+
     var data = respData.data;
     var factor = respData.factor;
     var graphDiv = dest.find('div.graphArea');
@@ -743,10 +820,27 @@ function graphResults(respData, dest) {
     var rsam = makePlotDataDict(data['dates'], data['rsam'], 3)
     const entropies=makePlotDataDict(data['entropy_dates'],data['entropies'], 4)
 
-    var graph_data = [freq_max10, sd_freq_max10, rsam, entropies]
-    var layout = generateSubgraphLayout(graph_data, [
-        'Freq Max10 (Hz)', 'SD Freq Max10 (Hz)', 'RSAM', 'Shannon Entropy'
-    ]);
+    const graph_data = [freq_max10, sd_freq_max10, rsam, entropies]
+    const graph_labels=['Freq Max10 (Hz)', 'SD Freq Max10 (Hz)', 'RSAM', 'Shannon Entropy'];
+
+    dest.find('div.nodVv').remove();
+    if(dVvStation!==null){
+        graphDiv.addClass('withdVv');
+        const dvv=makedVvDataDicts(data['dVvDates'],data['dVvValues'],data['dVvError1'],data['dVvError2'], 5);
+        const dvv_value=dvv[0];
+        const dvv_err1=dvv[1];
+        const dvv_err2=dvv[2];
+        graph_data.push(dvv_err1);
+        graph_data.push(dvv_err2);
+        graph_data.push(dvv_value);
+        graph_labels.push('dVv');
+    }
+    else{
+        graphDiv.removeClass('withdVv');
+        graphDiv.after('<div class="nodVv">To plot dVv, alt/option click a second station</div>');
+    }
+
+    var layout = generateSubgraphLayout(graph_data, graph_labels);
 
     var annotation = [{
         "xref": 'paper',
@@ -785,6 +879,9 @@ function graphResults(respData, dest) {
         setGraphRange.call(dateFrom[0]);
     }
     setTitle(dest);
+
+    Plotly.Plots.resize(graphDiv[0]);
+
 }
 
 function makePlotDataDict(x, y, idx) {
@@ -805,6 +902,48 @@ function makePlotDataDict(x, y, idx) {
     }
 
     return trace;
+}
+
+function makedVvDataDicts(dates, m, em1, em2, idx) {
+    const trace = {
+        x: dates,
+        y: m,
+        type: 'scattergl',
+        mode: 'lines',
+        line: {color: "rgb(62, 139, 191)"}, 
+        'yaxis':`y${idx}`,
+        'xaxis':`x${idx}`
+    }
+
+    const err1 = {
+        x: dates,
+        y: em2,
+        type: 'scattergl',
+        mode: 'lines',
+        fill:"tonexty",
+        line: {
+            color: "rgb(62, 139, 191)",
+            width:0
+        }, 
+        'yaxis':`y${idx}`,
+        'xaxis':`x${idx}`
+    }
+
+    const err2 = {
+        x: dates,
+        y: em1,
+        type: 'scattergl',
+        mode: 'lines',
+        fill:"tonexty",
+        line: {
+            color: "rgb(62, 139, 191)",
+            width:0
+        }, 
+        'yaxis':`y${idx}`,
+        'xaxis':`x${idx}`
+    }
+
+    return [trace,err1,err2];
 }
 
 function generateSubgraphLayout(data, titles) {

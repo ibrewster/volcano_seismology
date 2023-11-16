@@ -431,6 +431,10 @@ img.anomalyMap{
     height: 1024px;
 }
 
+.graphArea.withdVv{
+    height:1280px;
+}
+
 .graphWrapper {
     overflow-y:auto;
 }
