@@ -1351,8 +1351,10 @@ function getBoundsFromLatLng(lat, lng, radiusInKm){
 function getAnomalies(){
     anomTimer=null;
     let entropiesDiv=$('#entropiesPlots').empty();
+    const volcs=[]
     $('#volcSelect option').each(function(){
         const volc=this.value;
+        volcs.push(volc);
         const args={'volc':volc};
         const volcID=volc.replace(' ','');
         let volcDiv=$(`<div id=${volcID}AnomaliesTop class="volcAnomaliesTop">`);
@@ -1363,18 +1365,26 @@ function getAnomalies(){
         volcDiv.append(titleDiv)
         volcDiv.append(`<div id=${volcID}Anomalies class="volcAnomalies">`)
         entropiesDiv.append(volcDiv)
-        $.getJSON('listVolcEntropies',args)
-        .done(showAnomalies)
+        // $.getJSON('listVolcEntropies',args)
+        // .done(showAnomalies)
     })
+
+    $.post('listEntropies',{'volcs':volcs})
+    .done(showAnomalies);
 }
 
 function showAnomalies(data){
-    const volc=data['volc'].replace(' ','');
-    const stations=data['stations']
-    const destDiv=$(`#${volc}Anomalies`);
-    for(const station in stations){
-        let [img,id]=stations[station]
-        destDiv.append(createEntropiesDiv(data['volc'],station,img,id));
+    for (let item of data){
+        const stations=item['stations']
+        volc=item['volc'].replace(' ','');
+
+        const destDiv=$(`#${volc}Anomalies`);
+        for(const [station, staData] of Object.entries(stations)){
+            let img=staData['img'];
+            let id=staData['staid'];
+
+            destDiv.append(createEntropiesDiv(item['volc'],station,img,id));
+        }
     }
 }
 

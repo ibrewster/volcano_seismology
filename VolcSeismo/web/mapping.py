@@ -857,6 +857,42 @@ def list_volc_entropies():
     return flask.jsonify({'volc': volc, 'stations': result})
 
 
+@app.route('/listEntropies', methods=["POST"])
+def list_entropies():
+    volcs = flask.request.form.getlist('volcs[]')
+    SQL = """
+SELECT
+    volcano,
+    station,
+    staid
+FROM	
+    (SELECT
+            stations.name as station,
+            volcanoes.site as volcano,
+            stations.id as staid,
+            stations.location <-> volcanoes.location as dist,
+            (SELECT 1 FROM shannon_entropy WHERE shannon_entropy.station=stations.id LIMIT 1) as exists
+    from stations
+    CROSS JOIN volcanoes
+    WHERE stations.location <-> volcanoes.location <= volcanoes.radius*1000
+    AND volcanoes.site = ANY(%s)) s1
+WHERE exists=1
+ORDER BY volcano, station"""
+    with utils.db_cursor() as cursor:
+        cursor.execute(SQL, [volcs, ])
+        results = pandas.DataFrame(cursor, columns=['volc', 'station', 'staid'])
+        
+    results['img'] = "static/img/entropy/" + results['station'] + ".png"
+    grouped = results.groupby('volc')
+    
+    output = []
+    for name, group in grouped:
+        group = group.set_index('station')
+        volc_stations = group[['img', 'staid']].to_dict('index')
+        output.append({'volc': name,'stations': volc_stations,})
+        
+    return flask.jsonify(output)
+
 @app.route('/listEventImages')
 def list_event_images():
     SQL = """
