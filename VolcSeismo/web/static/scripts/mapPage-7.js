@@ -381,7 +381,7 @@ function rescaleY(parentChart, dateFrom, dateTo, run) {
 
         let yData=thisData.y.slice(start, stop + 1);
 
-        // the following lines *look* cleaner, but I'm thinking the 
+        // the following lines *look* cleaner, but I'm thinking the
         // single loop is going to be faster...
         // const maxY = arr.reduce((a, b) => Math.max(a, b), -Infinity);
         // const minY = arr.reduce((a, b) => Math.min(a, b), Infinity);
@@ -398,7 +398,7 @@ function rescaleY(parentChart, dateFrom, dateTo, run) {
     var layouts = {};
     for (let axis in axis_lookup){
         let max,min;
-        [max,min]=axis_lookup[axis];
+        [min,max]=axis_lookup[axis];
 
         const spread=max-min;
         const padding=.05*spread;
@@ -431,7 +431,7 @@ function rescaleY(parentChart, dateFrom, dateTo, run) {
     // if (typeof(stopValue) !== 'undefined') //no number greater than this in list, this is the greatest!
     //     stopIdx = dateData.indexOf(stopValue); //we know this is in the list, because we found it above.
 
-       
+
 
     // for (var i = 0; i < graphs.data.length; i++) {
     //     //possible that some subgraphs don't have a yAxis (polar, for example)
@@ -574,7 +574,7 @@ function showStationGraphs(event,volc) {
     }
 
     var available_charts = $('div.chart:hidden')
-    
+
     var add_chart = typeof(event) == 'undefined' ? false : event.shiftKey;
     if (add_chart && visible_charts.length == 3) {
         alert("Sorry, but due to browser limitations, only three sets of graphs can be shown at once");
@@ -619,7 +619,7 @@ function adddVvSelect(data,title){
 
 function selectdVvPair(){
     const pair=this.value;
-    
+
     if(pair=='') {return;}
 
     const dest=$(this).closest('div.chart');
@@ -637,7 +637,7 @@ function createChartHeader(station, site, channels) {
     chartTitle.append('<b><span class="stationName">' + station +
         "</b>"
     );
-    
+
     $.getJSON('getdVvPairs',{'station':station})
     .done(function(data){
         adddVvSelect(data,chartTitle);
@@ -939,7 +939,7 @@ function makedVvDataDicts(dates, m, em1, em2, idx) {
         y: m,
         type: 'scattergl',
         mode: 'lines',
-        line: {color: "rgb(62, 139, 191)"}, 
+        line: {color: "rgb(62, 139, 191)"},
         'yaxis':`y${idx}`,
         'xaxis':`x${idx}`
     }
@@ -953,7 +953,7 @@ function makedVvDataDicts(dates, m, em1, em2, idx) {
         line: {
             color: "rgb(62, 139, 191)",
             width:0
-        }, 
+        },
         'yaxis':`y${idx}`,
         'xaxis':`x${idx}`
     }
@@ -967,7 +967,7 @@ function makedVvDataDicts(dates, m, em1, em2, idx) {
         line: {
             color: "rgb(62, 139, 191)",
             width:0
-        }, 
+        },
         'yaxis':`y${idx}`,
         'xaxis':`x${idx}`
     }
