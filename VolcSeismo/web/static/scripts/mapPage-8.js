@@ -606,7 +606,7 @@ function showStationGraphs(event,volc) {
 }
 
 function adddVvSelect(data,title){
-    title.append(' &nbsp;dVv Pair:');
+    title.append(' &nbsp;dv/v Pair:');
     const select=$('<select class="dvvSelect">');
     select.append('<option>');
     for(let opt of data){
@@ -863,11 +863,11 @@ function graphResults(respData, dest) {
         graph_data.push(dvv_err1);
         graph_data.push(dvv_err2);
         graph_data.push(dvv_value);
-        graph_labels.push('dVv');
+        graph_labels.push('dv/v (%)');
     }
     else{
         graphDiv.removeClass('withdVv');
-        graphDiv.after('<div class="nodVv">To plot dVv, select a station from the pull-down in the title</div>');
+        graphDiv.after('<div class="nodVv">To plot dv/v, select a station from the pull-down in the title</div>');
     }
 
     var layout = generateSubgraphLayout(graph_data, graph_labels);
