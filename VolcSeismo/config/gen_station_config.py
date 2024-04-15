@@ -106,12 +106,12 @@ def make_net_dict(avail, meta):
         if sta not in channels:
             # Only append this to the data frame if we haven't seen it before
 
-            item_dict = {
-                'station': sta,
-                'latitude': float(sta_meta['Latitude']),
-                'longitude': float(sta_meta['Longitude']),
-            }
-            nets = nets.append(item_dict, ignore_index = True)
+            item_dict = pandas.DataFrame(
+                [{ 'station': sta, 'latitude':
+                   float(sta_meta['Latitude']), 'longitude': float(sta_meta['Longitude']),
+                }]
+            )
+            nets = pandas.concat([nets, item_dict], ignore_index=True)
 
         chan_data = (
             chan,
@@ -199,7 +199,7 @@ def generate_stations():
         if all_nets is None:
             all_nets = nets
         else:
-            all_nets = all_nets.append(nets)
+            all_nets = pandas.concat([all_nets, nets])
 
         all_channels.update(channels)
 
