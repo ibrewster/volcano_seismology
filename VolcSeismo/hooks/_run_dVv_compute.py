@@ -1,3 +1,4 @@
+import json
 import logging
 import multiprocessing
 import os
@@ -11,7 +12,9 @@ import numpy
 import pandas
 import psycopg
 
-from dVv.compile_msnoise_B2 import main
+from pathlib import Path
+
+from dVv.compile_msnoise_C2 import main as run_msnoise
 
 from obspy import UTCDateTime
 
@@ -68,26 +71,58 @@ def init_lookups():
 
     STA_LOOKUP, VOLC_LOOKUP = get_lookups()
 
-def process_dVv(data_location, output_dir, start_str, end_str):
-    main(data_location, output_dir, start_str, end_str)
-    tt_file = os.path.join(output_dir, 'tt.csv')
-    if not os.path.exists(tt_file):
-        values = []
-    else:
-        data = pandas.read_csv(tt_file, parse_dates = ['Date'])
-        pairs = data['Pairs'].str.replace(NET_ID, '', regex = True)
-        pairs = pairs.replace(['ALL'], [None])
-        pairs = pairs.str.split('._', expand = True)
-        pairs[1] = pairs[1].str.replace('.', '', regex = False)
-        del data['Pairs']
-        data['sta1'] = pairs[0].replace(STA_LOOKUP)
-        data['sta2'] = pairs[1].replace(STA_LOOKUP)
-        values = data.to_dict(orient = 'records')
+def process_dVv(data_location, output_dir, start_str, end_str, volc):
+    run_msnoise(data_location, output_dir, start_str, end_str)
+    return process_output(output_dir, volc)
 
+def process_output(output_dir, volc):
+    """Three files: dvv, coh, and error."""
+    global STA_LOOKUP
+    global VOLC_LOOKUP
+    if STA_LOOKUP is None:
+        stas, volcs = get_lookups()
+        STA_LOOKUP = stas
+        VOLC_LOOKUP = volcs
+
+    pair_base: Path = Path(output_dir) / "Output" / "WCT" / "01" / "001_DAYS" / "ZZ"
+
+    output = pandas.DataFrame(columns = ['sta1', 'sta2', 'datetime', 'dvv', 'coh', 'err'])
+    output = output.set_index(['sta1', 'sta2', 'datetime'])
+
+    for pair_dir in pair_base.iterdir():
+        if not pair_dir.is_dir():
+            continue # Probably something like .DS_Store
+
+        parts = pair_dir.name.split('_')
+        sta1 = STA_LOOKUP[parts[1]]
+        sta2 = STA_LOOKUP[parts[3]]
+
+
+        for csv_file in pair_dir.glob("*.csv"):
+            data = pandas.read_csv(csv_file, parse_dates = [0])
+            data['sta1'] = sta1
+            data['sta2'] = sta2
+            data = data.set_index(['sta1', 'sta2', 'Unnamed: 0'])
+            data = data.replace([numpy.nan], [None], regex=False).to_dict(orient = 'index')
+
+            col = 'dvv' # default/else
+            if "coh" in csv_file.name:
+                col = 'coh'
+            elif "error" in csv_file.name:
+                col = 'err'
+
+            for key, value in data.items():
+                output.at[key, col] = json.dumps(value)
+
+    # "flatten" index into records
+    output = output.reset_index()
+    output['volc'] = volc
+    output['datetime'] = pandas.Series(output['datetime'].dt.to_pydatetime(), dtype = object)
+    values = output.to_dict(orient = "records")
     return values
 
 
-if __name__ == "__main__":
+def run_compute():
     os.environ['PATH'] = os.path.dirname(sys.executable) +  os.pathsep + os.environ['PATH']
     init_lookups()
 
@@ -111,25 +146,35 @@ if __name__ == "__main__":
             if volc == 'Unknown':
                 continue
 
+            print(f"--------------Processing {volc}-----------------")
+
             data_location = os.path.abspath(os.path.join(data_path, volc, 'data'))
             output_dir = os.path.abspath(os.path.join(data_location, '..', 'Output'))
-            try:
-                os.unlink(os.path.join(output_dir, 'tt.csv'))
-            except FileNotFoundError:
-                pass
 
-            proc = executor.submit(process_dVv, data_location, output_dir, start_str, end_str)
-            procs.append((volc, proc))
+            print(f"Data location: {data_location}")
+            print(f"Output_dir: {output_dir}")
+            for old_file in ['tt.csv', 'db.ini', 'msnoise.sqlite']:
+                try:
+                    os.unlink(os.path.join(output_dir, old_file))
+                except FileNotFoundError:
+                    pass
+
+            # proc = executor.submit(process_dVv, data_location, output_dir, start_str, end_str, VOLC_LOOKUP[volc])
+            # procs.append((volc, proc))
+            #############DEBUG##################
+            result = process_dVv(data_location, output_dir, start_str, end_str)
+            procs.append((volc, result))
+            ####################################
 
     for volc, proc in procs:
         try:
-            results = proc.result()
+            # results = proc.result()
+            ########## DEBUG ###########
+            results = proc
+            ############################
             if not results:
                 print(f"********No results generated for {volc}")
             else:
-                for x in results:
-                    x['volc'] = VOLC_LOOKUP[volc]
-
                 all_values += results
         except Exception as e:
             logging.exception("Unable to generate results for %s: %s",
@@ -139,7 +184,7 @@ if __name__ == "__main__":
         print("*****WARNING***** No ouput generated")
         exit(1)
 
-    value_sql ="(%(Date{idx})s, %(volc{idx})s, %(sta1{idx})s, %(sta2{idx})s, %(M{idx})s, %(EM{idx})s, %(A{idx})s, %(EA{idx})s, %(M0{idx})s, %(EM0{idx})s)"
+    value_sql ="(%(datetime{idx})s, %(volc{idx})s, %(sta1{idx})s, %(sta2{idx})s, %(dvv{idx})s, %(coh{idx})s, %(err{idx})s)"
 
     #value_sql ="(%(Date)s, %(volc)s, %(sta1)s, %(sta2)s, %(M)s, %(EM)s, %(A)s, %(EA)s, %(M0)s, %(EM0)s)"
 
@@ -152,17 +197,14 @@ if __name__ == "__main__":
             args[key] = value
 
 
-    SQL = "INSERT INTO dvv (datetime,volc,sta1,sta2,m,em,a,ea,m0,em0) VALUES\n"
+    SQL = "INSERT INTO wct (datetime,volc,sta1,sta2,dvv,coh,error) VALUES\n"
     SQL += ",\n".join(sql_placeholders)
     #SQL += value_sql
     SQL += """
     ON CONFLICT (datetime,volc,sta1,sta2) DO UPDATE SET
-    m=EXCLUDED.m,
-    em=EXCLUDED.em,
-    a=EXCLUDED.a,
-    ea=EXCLUDED.ea,
-    m0=EXCLUDED.m0,
-    em0=EXCLUDED.em0"""
+    dvv=EXCLUDED.dvv,
+    coh=EXCLUDED.coh,
+    err=EXCLUDED.err"""
 
     with DBCursor() as cursor:
         try:
@@ -173,3 +215,10 @@ if __name__ == "__main__":
         cursor.connection.commit()
 
     print("***Complete in", (time.time() - t1) / 60)
+
+
+if __name__ == "__main__":
+    values = process_output('/Users/israel/Development/volcano_seismology/VolcSeismo/hooks/dvv/processing/Korovin', 13)
+    print(values)
+    exit(0)
+    run_compute()
