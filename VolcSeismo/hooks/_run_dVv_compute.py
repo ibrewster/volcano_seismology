@@ -11,7 +11,7 @@ import numpy
 import pandas
 import psycopg
 
-from dVv.compile_msnoise_B2 import main
+from dVv.compile_msnoise_C2 import main
 
 from obspy import UTCDateTime
 
@@ -111,15 +111,21 @@ if __name__ == "__main__":
             if volc == 'Unknown':
                 continue
 
+            print(f"--------Submitting job for {volc}----------------")
             data_location = os.path.abspath(os.path.join(data_path, volc, 'data'))
             output_dir = os.path.abspath(os.path.join(data_location, '..', 'Output'))
-            try:
-                os.unlink(os.path.join(output_dir, 'tt.csv'))
-            except FileNotFoundError:
-                pass
+            for old_file in ['tt.csv', 'db.ini', 'msnoise.sqlite']:                    
+                try:
+                    os.unlink(os.path.join(output_dir, old_file))
+                except FileNotFoundError:
+                    pass
 
             proc = executor.submit(process_dVv, data_location, output_dir, start_str, end_str)
             procs.append((volc, proc))
+            # #############DEBUG##################
+            # result = process_dVv(data_location, output_dir, start_str, end_str)
+            # procs.append((volc, result))
+            # ####################################            
 
     for volc, proc in procs:
         try:
