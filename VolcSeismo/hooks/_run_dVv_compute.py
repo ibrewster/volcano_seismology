@@ -72,7 +72,11 @@ def init_lookups():
     STA_LOOKUP, VOLC_LOOKUP = get_lookups()
 
 def process_dVv(data_location, output_dir, start_str, end_str, volc):
-    run_msnoise(data_location, output_dir, start_str, end_str)
+    try:
+        run_msnoise(data_location, output_dir, start_str, end_str)
+    except Exception as e:
+        raise ValueError(e)
+    
     return process_output(output_dir, volc)
 
 def process_output(output_dir, volc):
@@ -84,7 +88,7 @@ def process_output(output_dir, volc):
         STA_LOOKUP = stas
         VOLC_LOOKUP = volcs
 
-    pair_base: Path = Path(output_dir) / "Output" / "WCT" / "01" / "001_DAYS" / "ZZ"
+    pair_base: Path = Path(output_dir) / "WCT" / "01" / "001_DAYS" / "ZZ"
 
     output = pandas.DataFrame(columns = ['sta1', 'sta2', 'datetime', 'dvv', 'coh', 'err'])
     output = output.set_index(['sta1', 'sta2', 'datetime'])
@@ -151,26 +155,29 @@ def run_compute():
             data_location = os.path.abspath(os.path.join(data_path, volc, 'data'))
             output_dir = os.path.abspath(os.path.join(data_location, '..', 'Output'))
 
-            print(f"Data location: {data_location}")
-            print(f"Output_dir: {output_dir}")
             for old_file in ['tt.csv', 'db.ini', 'msnoise.sqlite']:
                 try:
                     os.unlink(os.path.join(output_dir, old_file))
                 except FileNotFoundError:
                     pass
 
-            # proc = executor.submit(process_dVv, data_location, output_dir, start_str, end_str, VOLC_LOOKUP[volc])
-            # procs.append((volc, proc))
+            proc = executor.submit(process_dVv, data_location, output_dir, start_str, end_str, VOLC_LOOKUP[volc])
+            procs.append((volc, proc))
             #############DEBUG##################
-            result = process_dVv(data_location, output_dir, start_str, end_str)
-            procs.append((volc, result))
+            # try:                
+                # result = process_dVv(
+                    # data_location, output_dir, start_str, end_str, VOLC_LOOKUP[volc]
+                # )
+                # procs.append((volc, result))
+            # except ValueError as e:
+                # print(f"Unable to process volcano {volc}. Error: {e}")
             ####################################
 
     for volc, proc in procs:
         try:
-            # results = proc.result()
+            results = proc.result()
             ########## DEBUG ###########
-            results = proc
+            # results = proc
             ############################
             if not results:
                 print(f"********No results generated for {volc}")
@@ -186,7 +193,6 @@ def run_compute():
 
     value_sql ="(%(datetime{idx})s, %(volc{idx})s, %(sta1{idx})s, %(sta2{idx})s, %(dvv{idx})s, %(coh{idx})s, %(err{idx})s)"
 
-    #value_sql ="(%(Date)s, %(volc)s, %(sta1)s, %(sta2)s, %(M)s, %(EM)s, %(A)s, %(EA)s, %(M0)s, %(EM0)s)"
 
     sql_placeholders = []
     args = {}
@@ -204,7 +210,7 @@ def run_compute():
     ON CONFLICT (datetime,volc,sta1,sta2) DO UPDATE SET
     dvv=EXCLUDED.dvv,
     coh=EXCLUDED.coh,
-    err=EXCLUDED.err"""
+    error=EXCLUDED.error"""
 
     with DBCursor() as cursor:
         try:
@@ -218,7 +224,4 @@ def run_compute():
 
 
 if __name__ == "__main__":
-    values = process_output('/Users/israel/Development/volcano_seismology/VolcSeismo/hooks/dvv/processing/Korovin', 13)
-    print(values)
-    exit(0)
     run_compute()
