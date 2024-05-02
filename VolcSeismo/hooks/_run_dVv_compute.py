@@ -144,7 +144,6 @@ def run_compute():
     # DEBUG
     # start_str, end_str = '2023-09-30', '2023-10-01'
     procs = []
-    all_values = []
     with ProcessPoolExecutor(initializer=init_lookups, max_workers=15) as executor:
         for volc in volcs:
             if volc == 'Unknown':
@@ -185,32 +184,28 @@ def run_compute():
             if not results:
                 print(f"********No results generated for {volc}")
             else:
-                all_values += results
+                print(f"--------Submitting results for {volc} to db--------------")
+                submit_results(results)
         except Exception as e:
-            logging.exception("Unable to generate results for %s: %s",
-                              volc, str(e))
+            logging.exception("Unable to generate results for %s: %s", volc, str(e))
 
-    if not all_values:
-        print("*****WARNING***** No ouput generated")
-        exit(1)
+    print("***Complete in", (time.time() - t1) / 60)
 
 
-    print('------------- Results processed. Submitting to DB-------------------')
-    value_sql ="(%(datetime{idx})s, %(volc{idx})s, %(sta1{idx})s, %(sta2{idx})s, %(dvv{idx})s, %(coh{idx})s, %(err{idx})s)"
-
+def submit_results(values):
+    value_sql = "(%(datetime{idx})s, %(volc{idx})s, %(sta1{idx})s, %(sta2{idx})s, %(dvv{idx})s, %(coh{idx})s, %(err{idx})s)"
 
     sql_placeholders = []
     args = {}
-    for idx, value_dict in enumerate(all_values):
-        sql_placeholders.append(value_sql.format(idx = idx))
+    for idx, value_dict in enumerate(values):
+        sql_placeholders.append(value_sql.format(idx=idx))
         for key, value in value_dict.items():
             key += str(idx)
             args[key] = value
 
-
     SQL = "INSERT INTO wct (datetime,volc,sta1,sta2,dvv,coh,error) VALUES\n"
     SQL += ",\n".join(sql_placeholders)
-    #SQL += value_sql
+    # SQL += value_sql
     SQL += """
     ON CONFLICT (datetime,volc,sta1,sta2) DO UPDATE SET
     dvv=EXCLUDED.dvv,
@@ -224,8 +219,6 @@ def run_compute():
             print(e)
 
         cursor.connection.commit()
-
-    print("***Complete in", (time.time() - t1) / 60)
 
 
 if __name__ == "__main__":
