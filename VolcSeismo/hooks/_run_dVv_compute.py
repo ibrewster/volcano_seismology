@@ -145,12 +145,12 @@ def run_compute():
     # start_str, end_str = '2023-09-30', '2023-10-01'
     procs = []
     all_values = []
-    with ProcessPoolExecutor(initializer = init_lookups) as executor:
+    with ProcessPoolExecutor(initializer=init_lookups, max_workers=15) as executor:
         for volc in volcs:
             if volc == 'Unknown':
                 continue
 
-            print(f"--------------Processing {volc}-----------------")
+            print(f"--------------Submitting {volc} for processing-----------------")
 
             data_location = os.path.abspath(os.path.join(data_path, volc, 'data'))
             output_dir = os.path.abspath(os.path.join(data_location, '..', 'Output'))
@@ -172,8 +172,11 @@ def run_compute():
             # except ValueError as e:
                 # print(f"Unable to process volcano {volc}. Error: {e}")
             ####################################
+        print("-----All jobs submitted. Waiting for completion-------")
 
+    print("--------------Jobs complete. Processing results---------------")
     for volc, proc in procs:
+        print(f"--------Processing result for {volc}--------------")
         try:
             results = proc.result()
             ########## DEBUG ###########
@@ -191,6 +194,8 @@ def run_compute():
         print("*****WARNING***** No ouput generated")
         exit(1)
 
+
+    print('------------- Results processed. Submitting to DB-------------------')
     value_sql ="(%(datetime{idx})s, %(volc{idx})s, %(sta1{idx})s, %(sta2{idx})s, %(dvv{idx})s, %(coh{idx})s, %(err{idx})s)"
 
 

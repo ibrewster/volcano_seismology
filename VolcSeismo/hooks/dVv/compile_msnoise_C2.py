@@ -57,8 +57,8 @@ def main(data_location, data_output, start_date, end_date):
     }  # 'components_to_compute_single_station': 'EN,EZ,NZ',
     
     filters = [
-        # (1, 0.5, 0.55, 5.0, 4.95, 1, 12, 2, True),
-        (1, 1.0, 1.05, 20.0, 19.95, 0, 12, 2, True)
+        (1, 0.5, 0.55, 5.0, 4.95, 1, 12, 2, True),
+        # (1, 1.0, 1.05, 20.0, 19.95, 0, 12, 2, True)
     ]
     
     # parametrization of msnoise (first time or when changing parameters)
