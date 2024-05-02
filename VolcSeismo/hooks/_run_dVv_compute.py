@@ -144,7 +144,9 @@ def run_compute():
     # DEBUG
     # start_str, end_str = '2023-09-30', '2023-10-01'
     procs = []
-    with ProcessPoolExecutor(initializer=init_lookups, max_workers=15) as executor:
+    workers = min(len(volcs), 15)
+    print(f"--------Using {workers} workers-------")
+    with ProcessPoolExecutor(initializer=init_lookups, max_workers=workers) as executor:
         for volc in volcs:
             if volc == 'Unknown':
                 continue
@@ -171,25 +173,28 @@ def run_compute():
             # except ValueError as e:
                 # print(f"Unable to process volcano {volc}. Error: {e}")
             ####################################
-        print("-----All jobs submitted. Waiting for completion-------")
 
-    print("--------------Jobs complete. Processing results---------------")
-    for volc, proc in procs:
-        print(f"--------Processing result for {volc}--------------")
-        try:
-            results = proc.result()
-            ########## DEBUG ###########
-            # results = proc
-            ############################
-            if not results:
-                print(f"********No results generated for {volc}")
-            else:
-                print(f"--------Submitting results for {volc} to db--------------")
-                submit_results(results)
-        except Exception as e:
-            logging.exception("Unable to generate results for %s: %s", volc, str(e))
-
-    print("***Complete in", (time.time() - t1) / 60)
+        print("--------------Jobs Submitted. Waiting for results---------------")
+        for volc, proc in procs:
+            print(f"--------Processing result for {volc}--------------")
+            try:
+                results = proc.result()
+                ########## DEBUG ###########
+                # results = proc
+                ############################
+                if not results:
+                    print(f"********No results generated for {volc}*************")
+                else:
+                    print(f"--------Submitting results for {volc} to db--------------")
+                    submit_results(results)
+            except Exception as e:
+                logging.exception(
+                    "!!!!!!!!!!!!!!Unable to generate results for %s: %s!!!!!!!!!!!",
+                    volc,
+                    str(e),
+                )
+    
+        print("***Complete in", (time.time() - t1) / 60)
 
 
 def submit_results(values):
