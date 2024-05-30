@@ -775,20 +775,22 @@ def get_dvv_data():
     dvv_values = dvv_ewm.values.tolist()
     
     coh = dvv_data['coh'].apply(pandas.Series)
-    coh_ewm = coh.ewm(span=1).mean().astype(float).values
-        
-    # dvv_data['em1'] = dvv_data['m'] - dvv_data['em']
-    # dvv_data['em2'] = dvv_data['m'] + dvv_data['em']
-    # dvv_data['date'] = dvv_data['date'].dt.strftime('%Y-%m-%d %H:%M:%S')
-    # del dvv_data['em']
-    
-    # result = dvv_data.to_dict('list')
+    coh = coh.asfreq('30T', fill_value=numpy.NaN)
+    coh_ewm = coh.ewm(span=1).mean().astype(float)
+    coh_dates = pandas.Series(coh_ewm.index).dt.strftime('%Y-%m-%d %H:%M:%S').tolist()
+    coh_ewm = coh_ewm.T.sort_index()
+    coh_freq = coh_ewm.index.tolist()
+    coh_values = coh_ewm.values.tolist()
     
     result = {
         'heatX': dvv_dates,
         'heatY': dvv_freq,
         'heatZ': dvv_values,
+        'cohX': coh_dates,
+        'cohY': coh_freq,
+        'cohZ': coh_values,
     }
+    
     str_data = ujson.dumps(result)
     str_data = str_data.replace("NaN", "null")
     return flask.Response(response=str_data, status=200,

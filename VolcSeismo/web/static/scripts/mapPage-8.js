@@ -532,6 +532,9 @@ function getdVvData(dest,data,sta1,sta2){
         data['data']['dvvHeatX']=dvvData['heatX'];
         data['data']['dvvHeatY']=dvvData['heatY'];
         data['data']['dvvHeatZ']=dvvData['heatZ'];
+        data['data']['cohX']=dvvData['cohX'];
+        data['data']['cohY']=dvvData['cohY'];
+        data['data']['cohZ']=dvvData['cohZ'];
         graphResults(data, dest);
     })
     .fail(function(a,b,c){alert(b); console.log(a)});
@@ -818,6 +821,20 @@ function plotGraph(div, data, layout, config) {
     rescaleY(div.closest('.chart'), date_from, date_to)
 }
 
+var rdYlGnColorscale = [
+    [0.0, 'rgb(165,0,38)'],   // red
+    [0.1, 'rgb(215,48,39)'],
+    [0.2, 'rgb(244,109,67)'],
+    [0.3, 'rgb(253,174,97)'],
+    [0.4, 'rgb(254,224,139)'],
+    [0.5, 'rgb(255,255,191)'], // yellow
+    [0.6, 'rgb(217,239,139)'],
+    [0.7, 'rgb(166,217,106)'],
+    [0.8, 'rgb(102,189,99)'],
+    [0.9, 'rgb(26,152,80)'],
+    [1.0, 'rgb(0,104,55)']    // green
+];
+
 function graphResults(respData, dest) {
     // save the response data for potential future use
     dest.data('rawData',respData);
@@ -864,15 +881,23 @@ function graphResults(respData, dest) {
         const sta1=chartDiv.find('.stationName').text();
 
         //dVV Heatmap
-        const dvv_info=makedVvHeatmap(data['dvvHeatX'],data['dvvHeatY'],data['dvvHeatZ'], 5);
+        const dvv_info=makedVvHeatmap(data['dvvHeatX'],data['dvvHeatY'],data['dvvHeatZ'], 1);
         const dvv=dvv_info[0];
         const layout=dvv_info[1];
         const title=`0.5-5.0 Hz, dv/v, Average, ${sta1}_${dVvStation}`;
         layout['title']=title;
 
-        plotDVV(dvv_div,dvv,layout);
-        //graph_data.push(dvv);
-        //graph_labels.push('dv/v (%)');
+        //coherence heatmap
+        const coh_info=makedVvHeatmap(data['cohX'],data['cohY'],data['cohZ'], 2);
+        const coh=coh_info[0];
+        const coh_layout=coh_info[1];
+        const coh_title=`0.5-5.0 Hz, coherence, Average, ${sta1}_${dVvStation}`;
+        coh_layout['title']=coh_title;
+        coh['zmax']=1;
+        coh['colorscale']=rdYlGnColorscale;
+
+
+        plotDVV(dvv_div,[dvv,coh],[layout,coh_layout]);
     }
     else{
         graphDiv.after('<div class="dVv">To plot dv/v, select a station from the pull-down in the title</div>');
@@ -922,7 +947,14 @@ function graphResults(respData, dest) {
 }
 
 function plotDVV(div,data,layout){
-    Plotly.newPlot(div.get(0),[data],layout);
+    for(let idx=0;idx<data.length;idx++){
+        let dest=$('<div class="dvvPlotDest">');
+        div.append(dest);
+
+        let d=data[idx];
+        let l=layout[idx];
+        Plotly.newPlot(dest.get(0),[d],l);
+    }
 }
 
 function makePlotDataDict(x, y, idx) {
