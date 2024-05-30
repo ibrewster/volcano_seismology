@@ -292,7 +292,7 @@ function setTitle(parentChart) {
 
     var dateFrom = formatDateString(range[0]);
     var dateTo = formatDateString(range[1]);
-    var plot_title = parentChart.find('.chartTitle').text();
+    var plot_title = parentChart.find('.stationName').text();
 
     plot_title += " - " + dateFrom + " to " + dateTo;
 
@@ -300,7 +300,7 @@ function setTitle(parentChart) {
     filename += dateFrom.replace(/\//g, '-') + " to ";
     filename += dateTo.replace(/\//g, '-');
 
-    const height=$(graphDiv).hasClass('withdVv')?1280:1024;
+    const height=1024;
 
     var newConfig = {
         'toImageButtonOptions': {
@@ -408,7 +408,9 @@ function rescaleY(parentChart, dateFrom, dateTo, run) {
             min -= padding;
         }
 
-        layouts[axis + '.range'] = [min, max];
+        if(Math.abs(min)!=Infinity && Math.abs(max)!=Infinity){
+            layouts[axis + '.range'] = [min, max];
+        }
     }
 
 
@@ -525,14 +527,14 @@ function dateRangeClicked() {
 
 function getdVvData(dest,data,sta1,sta2){
     const future=$.getJSON('getdVvData',{sta1:sta1, sta2:sta2})
-    future.done(function(dvvData){
+    .done(function(dvvData){
         dVvStation=sta2;
-        data['data']['dVvDates']=dvvData['date'];
-        data['data']['dVvValues']=dvvData['m'];
-        data['data']['dVvError1']=dvvData['em1'];
-        data['data']['dVvError2']=dvvData['em2'];
+        data['data']['dvvHeatX']=dvvData['heatX'];
+        data['data']['dvvHeatY']=dvvData['heatY'];
+        data['data']['dvvHeatZ']=dvvData['heatZ'];
         graphResults(data, dest);
-    });
+    })
+    .fail(function(a,b,c){alert(b); console.log(a)});
 
     return future;
 }
@@ -853,21 +855,27 @@ function graphResults(respData, dest) {
     const graph_data = [freq_max10, sd_freq_max10, rsam, entropies]
     const graph_labels=['Freq Max10 (Hz)', 'SD Freq Max10 (Hz)', 'RSAM', 'Shannon Entropy'];
 
-    dest.find('div.nodVv').remove();
+    dest.find('div.dVv').remove();
     if(dVvStation!==null){
-        graphDiv.addClass('withdVv');
-        const dvv=makedVvDataDicts(data['dVvDates'],data['dVvValues'],data['dVvError1'],data['dVvError2'], 5);
-        const dvv_value=dvv[0];
-        const dvv_err1=dvv[1];
-        const dvv_err2=dvv[2];
-        graph_data.push(dvv_err1);
-        graph_data.push(dvv_err2);
-        graph_data.push(dvv_value);
-        graph_labels.push('dv/v (%)');
+        dvv_div=$('<div class="dVv"></div>');
+        graphDiv.after(dvv_div);
+
+        const chartDiv=graphDiv.closest('.chart');
+        const sta1=chartDiv.find('.stationName').text();
+
+        //dVV Heatmap
+        const dvv_info=makedVvHeatmap(data['dvvHeatX'],data['dvvHeatY'],data['dvvHeatZ'], 5);
+        const dvv=dvv_info[0];
+        const layout=dvv_info[1];
+        const title=`0.5-5.0 Hz, dv/v, Average, ${sta1}_${dVvStation}`;
+        layout['title']=title;
+
+        plotDVV(dvv_div,dvv,layout);
+        //graph_data.push(dvv);
+        //graph_labels.push('dv/v (%)');
     }
     else{
-        graphDiv.removeClass('withdVv');
-        graphDiv.after('<div class="nodVv">To plot dv/v, select a station from the pull-down in the title</div>');
+        graphDiv.after('<div class="dVv">To plot dv/v, select a station from the pull-down in the title</div>');
     }
 
     var layout = generateSubgraphLayout(graph_data, graph_labels);
@@ -913,6 +921,10 @@ function graphResults(respData, dest) {
     setTitle(dest);
 }
 
+function plotDVV(div,data,layout){
+    Plotly.newPlot(div.get(0),[data],layout);
+}
+
 function makePlotDataDict(x, y, idx) {
     var trace = {
         x: x,
@@ -933,46 +945,32 @@ function makePlotDataDict(x, y, idx) {
     return trace;
 }
 
-function makedVvDataDicts(dates, m, em1, em2, idx) {
-    const trace = {
-        x: dates,
-        y: m,
-        type: 'scattergl',
-        mode: 'lines',
-        line: {color: "rgb(62, 139, 191)"},
-        'yaxis':`y${idx}`,
-        'xaxis':`x${idx}`
+function makedVvHeatmap(x, y, z, idx) {
+    const heatmap = {
+        x: x,
+        y: y,
+        z: z,
+        type: 'heatmap',
+        zmin:0,
+        zmax:0.5,
+        colorscale:"Bluered",
+        connectgaps:false,
+        xperiod:1.8e+6,
+        hoverongaps:false,
     }
 
-    const err1 = {
-        x: dates,
-        y: em2,
-        type: 'scattergl',
-        mode: 'lines',
-        fill:"tonexty",
-        line: {
-            color: "rgb(62, 139, 191)",
-            width:0
+    const heatLayout={
+        yaxis:{
+            range:[0.5,5]
         },
-        'yaxis':`y${idx}`,
-        'xaxis':`x${idx}`
-    }
-
-    const err2 = {
-        x: dates,
-        y: em1,
-        type: 'scattergl',
-        mode: 'lines',
-        fill:"tonexty",
-        line: {
-            color: "rgb(62, 139, 191)",
-            width:0
+        plot_bgcolor:"#D3D3D3",
+        margin: {
+            t: 42, //because, of COURSE it is!
+            pad: 0
         },
-        'yaxis':`y${idx}`,
-        'xaxis':`x${idx}`
     }
 
-    return [trace,err1,err2];
+    return [heatmap, heatLayout];
 }
 
 function generateSubgraphLayout(data, titles) {

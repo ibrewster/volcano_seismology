@@ -752,23 +752,45 @@ def get_dvv_data():
     sta1 = flask.request.args['sta1']
     sta2 = flask.request.args['sta2']
     
-    SQL = "SELECT datetime, m, em FROM dvv WHERE sta_pair @> %s ORDER BY datetime;"
+    SQL = "SELECT datetime, coh, dvv FROM wct WHERE sta1=%s and sta2=%s ORDER BY datetime;"
     with utils.db_cursor() as cursor:
         
         cursor.execute('SELECT id FROM stations WHERE name in %s', ((sta1, sta2), ) )
         pair = [x[0] for x in cursor]
         
-        cursor.execute(SQL, [pair, ])
-        dvv_data = pandas.DataFrame(cursor, columns=['date', 'm', 'em'])
-        #dvv_data = cursor.fetchall()
+        cursor.execute(SQL, pair)
+        dvv_data = pandas.DataFrame(cursor, columns=['date', 'coh', 'dvv'])
         
-    dvv_data['em1'] = dvv_data['m'] - dvv_data['em']
-    dvv_data['em2'] = dvv_data['m'] + dvv_data['em']
-    dvv_data['date'] = dvv_data['date'].dt.strftime('%Y-%m-%d %H:%M:%S')
-    del dvv_data['em']
+    dvv_data = dvv_data.set_index(['date'])
     
-    result = dvv_data.to_dict('list')
+    # make sure I have data for every half hour, even if NaN
+    dvv = dvv_data['dvv'].apply(pandas.Series)
+    dvv = dvv.asfreq('30T', fill_value=numpy.NaN)
+    dvv_ewm = dvv.ewm(span=30).mean().astype(float)
+    dvv_ewm[dvv.isnull()] = numpy.nan
+    
+    dvv_dates = pandas.Series(dvv_ewm.index).dt.strftime('%Y-%m-%d %H:%M:%S').tolist()
+    dvv_ewm = dvv_ewm.T.sort_index()
+    dvv_freq = dvv_ewm.index.tolist()
+    dvv_values = dvv_ewm.values.tolist()
+    
+    coh = dvv_data['coh'].apply(pandas.Series)
+    coh_ewm = coh.ewm(span=1).mean().astype(float).values
+        
+    # dvv_data['em1'] = dvv_data['m'] - dvv_data['em']
+    # dvv_data['em2'] = dvv_data['m'] + dvv_data['em']
+    # dvv_data['date'] = dvv_data['date'].dt.strftime('%Y-%m-%d %H:%M:%S')
+    # del dvv_data['em']
+    
+    # result = dvv_data.to_dict('list')
+    
+    result = {
+        'heatX': dvv_dates,
+        'heatY': dvv_freq,
+        'heatZ': dvv_values,
+    }
     str_data = ujson.dumps(result)
+    str_data = str_data.replace("NaN", "null")
     return flask.Response(response=str_data, status=200,
                           mimetype="application/json")
 
@@ -778,7 +800,7 @@ def get_dvv_pairs():
     sta = flask.request.args['station']
     SQL = '''SELECT distinct
         (SELECT name FROM stations WHERE id IN (sta1,sta2) AND id!=%s) pair
-    FROM dvv
+    FROM wct
     WHERE %s <@ sta_pair
     ORDER BY 1'''
     
@@ -839,10 +861,10 @@ def list_volc_entropies():
     WHERE dist<=(SELECT radius FROM volcanoes WHERE site=%(volc)s)
     AND EXISTS
     (SELECT 1
-	FROM shannon_entropy
-	WHERE station=s1.id
+        FROM shannon_entropy
+        WHERE station=s1.id
         AND time>now()-'10 years'::interval
-	LIMIT 1)
+        LIMIT 1)
     """
     with utils.db_cursor() as cursor:
         cursor.execute(SQL, {'volc': volc})
