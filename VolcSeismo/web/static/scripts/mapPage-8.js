@@ -529,12 +529,15 @@ function getdVvData(dest,data,sta1,sta2){
     const future=$.getJSON('getdVvData',{sta1:sta1, sta2:sta2})
     .done(function(dvvData){
         dVvStation=sta2;
-        data['data']['dvvHeatX']=dvvData['heatX'];
-        data['data']['dvvHeatY']=dvvData['heatY'];
-        data['data']['dvvHeatZ']=dvvData['heatZ'];
-        data['data']['cohX']=dvvData['cohX'];
-        data['data']['cohY']=dvvData['cohY'];
-        data['data']['cohZ']=dvvData['cohZ'];
+        for(const [key,value] of Object.entries(dvvData)){
+            data['data'][key]=value
+        }
+        // data['data']['dvvHeatX']=dvvData['heatX'];
+        // data['data']['dvvHeatY']=dvvData['heatY'];
+        // data['data']['dvvHeatZ']=dvvData['heatZ'];
+        // data['data']['cohX']=dvvData['cohX'];
+        // data['data']['cohY']=dvvData['cohY'];
+        // data['data']['cohZ']=dvvData['cohZ'];
         graphResults(data, dest);
     })
     .fail(function(a,b,c){alert(b); console.log(a)});
@@ -881,7 +884,7 @@ function graphResults(respData, dest) {
         const sta1=chartDiv.find('.stationName').text();
 
         //dVV Heatmap
-        const dvv_info=makedVvHeatmap(data['dvvHeatX'],data['dvvHeatY'],data['dvvHeatZ'], 1);
+        const dvv_info=makedVvHeatmap(data['heatX'],data['heatY'],data['heatZ'], 1);
         const dvv=dvv_info[0];
         const layout=dvv_info[1];
         const title=`0.5-5.0 Hz, dv/v, Average, ${sta1}_${dVvStation}`;
@@ -896,8 +899,18 @@ function graphResults(respData, dest) {
         coh['zmax']=1;
         coh['colorscale']=rdYlGnColorscale;
 
+        //dvv curves
+        const [dvvCurve,dvvCurveLayout]=dvvCurvePlot(data['dvvCurveDates'], data['dvvCurves']);
+        const dvvCurveTitle=`${sta1}-${dVvStation} dvv`
+        dvvCurveLayout['title']=dvvCurveTitle;
 
-        plotDVV(dvv_div,[dvv,coh],[layout,coh_layout]);
+        const [cohCurve,cohCurveLayout]=dvvCurvePlot(data['cohCurveDates'], data['cohCurves']);
+        const cohCurveTitle=`${sta1}-${dVvStation} Coherence`
+        cohCurveLayout['title']=cohCurveTitle;
+        cohCurveLayout['yaxis']['title']='coherence';
+        cohCurveLayout['yaxis']['range']=[0,1];
+
+        plotDVV(dvv_div,[dvv,coh,dvvCurve,cohCurve],[layout,coh_layout,dvvCurveLayout,cohCurveLayout]);
     }
     else{
         graphDiv.after('<div class="dVv">To plot dv/v, select a station from the pull-down in the title</div>');
@@ -952,9 +965,38 @@ function plotDVV(div,data,layout){
         div.append(dest);
 
         let d=data[idx];
+        // if it has a length, it's already an array
+        if(d.length===undefined){
+            d=[d];
+        }
+
         let l=layout[idx];
-        Plotly.newPlot(dest.get(0),[d],l);
+        Plotly.newPlot(dest.get(0),d,l);
     }
+}
+
+function dvvCurvePlot(x,y,idx){
+    const datas=[]
+    for(const [title,values] of Object.entries(y)){
+        let trace={
+            x:x,
+            y:values,
+            type:'scatter',
+            mode:'lines',
+            name:title,
+            connectgaps:false
+        }
+
+        datas.push(trace)
+    }
+
+    const layout={
+        yaxis:{
+            title:"dv/v(%)"
+        }
+    }
+
+    return [datas,layout]
 }
 
 function makePlotDataDict(x, y, idx) {

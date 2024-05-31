@@ -747,6 +747,33 @@ FROM
         print("Got", len(graph_data['dates']), "rows in", time.time() - t1, "seconds")
         return graph_data
 
+def freqslice(df):
+    freqranges = [[0.5, 1.0], [1.0, 2.0], [2.0, 4.0], [0.5, 2.0]]
+    byfreq = df.T.sort_index()
+    byfreq.index = byfreq.index.astype(float)
+    byfreq = byfreq.sort_index().loc[(byfreq.index >= 0.5) & (byfreq.index <= 5)]
+    sliced_df = pandas.DataFrame()
+    for frange in freqranges:
+        col_name = f"{frange[0]}-{frange[1]} Hz"
+        range_data = byfreq.loc[frange[0] : frange[1]]
+        range_data = range_data.mean().rolling(30, min_periods=10).mean()
+        sliced_df[col_name] = range_data
+        
+    return sliced_df.asfreq('30T', fill_value=numpy.NaN).sort_index()
+
+def heatmap_values(df):
+    # make sure I have data for every half hour, even if NaN
+    filled = df.asfreq('30T', fill_value=numpy.NaN)
+    ewm_df = filled.ewm(span=30).mean().astype(float)
+    ewm_df[filled.isnull()] = numpy.nan
+    
+    dates = pandas.Series(ewm_df.index).dt.strftime('%Y-%m-%d %H:%M:%S').tolist()
+    ewm_df = ewm_df.T.sort_index()
+    freq = ewm_df.index.tolist()
+    values = ewm_df.values.tolist()
+    
+    return (dates, freq, values)
+
 @app.route('/getdVvData')
 def get_dvv_data():
     sta1 = flask.request.args['sta1']
@@ -763,24 +790,23 @@ def get_dvv_data():
         
     dvv_data = dvv_data.set_index(['date'])
     
-    # make sure I have data for every half hour, even if NaN
     dvv = dvv_data['dvv'].apply(pandas.Series)
-    dvv = dvv.asfreq('30T', fill_value=numpy.NaN)
-    dvv_ewm = dvv.ewm(span=30).mean().astype(float)
-    dvv_ewm[dvv.isnull()] = numpy.nan
-    
-    dvv_dates = pandas.Series(dvv_ewm.index).dt.strftime('%Y-%m-%d %H:%M:%S').tolist()
-    dvv_ewm = dvv_ewm.T.sort_index()
-    dvv_freq = dvv_ewm.index.tolist()
-    dvv_values = dvv_ewm.values.tolist()
-    
     coh = dvv_data['coh'].apply(pandas.Series)
-    coh = coh.asfreq('30T', fill_value=numpy.NaN)
-    coh_ewm = coh.ewm(span=1).mean().astype(float)
-    coh_dates = pandas.Series(coh_ewm.index).dt.strftime('%Y-%m-%d %H:%M:%S').tolist()
-    coh_ewm = coh_ewm.T.sort_index()
-    coh_freq = coh_ewm.index.tolist()
-    coh_values = coh_ewm.values.tolist()
+    
+    dvv_freq_curves = freqslice(dvv)
+    dvv_curve_dates = (
+        pandas.Series(dvv_freq_curves.index).dt.strftime('%Y-%m-%d %H:%M:%S').to_list()
+    )
+    dvv_curves = dvv_freq_curves.to_dict('list')
+    
+    coh_freq_curves = freqslice(coh)
+    coh_curve_dates = (
+        pandas.Series(coh_freq_curves.index).dt.strftime('%Y-%m-%d %H:%M:%S').to_list()
+    )
+    coh_curves = coh_freq_curves.to_dict('list')
+    
+    dvv_dates, dvv_freq, dvv_values = heatmap_values(dvv)
+    coh_dates, coh_freq, coh_values = heatmap_values(coh)    
     
     result = {
         'heatX': dvv_dates,
@@ -789,6 +815,10 @@ def get_dvv_data():
         'cohX': coh_dates,
         'cohY': coh_freq,
         'cohZ': coh_values,
+        'dvvCurves': dvv_curves,
+        'dvvCurveDates': dvv_curve_dates,
+        'cohCurves': coh_curves,
+        'cohCurveDates': coh_curve_dates,
     }
     
     str_data = ujson.dumps(result)
