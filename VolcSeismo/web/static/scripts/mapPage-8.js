@@ -904,13 +904,23 @@ function graphResults(respData, dest) {
         const dvvCurveTitle=`${sta1}-${dVvStation} dvv`
         dvvCurveLayout['title']=dvvCurveTitle;
 
+        //Coherence curves
         const [cohCurve,cohCurveLayout]=dvvCurvePlot(data['cohCurveDates'], data['cohCurves']);
         const cohCurveTitle=`${sta1}-${dVvStation} Coherence`
         cohCurveLayout['title']=cohCurveTitle;
         cohCurveLayout['yaxis']['title']='coherence';
         cohCurveLayout['yaxis']['range']=[0,1];
 
-        plotDVV(dvv_div,[dvv,coh,dvvCurve,cohCurve],[layout,coh_layout,dvvCurveLayout,cohCurveLayout]);
+        //dvv vs coherence curve
+        const [dvvCohCurve,dvvCohLayout]=dvvCohCurvePlot(data['dvvCurveDates'],data['dvvCurves'],data['cohCurves']);
+        const dvvCohTitle=`${sta1}-${dVvStation} dvv and their coherence`;
+        dvvCohLayout['title']=dvvCohTitle;
+
+        plotDVV(
+            dvv_div,
+            [dvv,coh,dvvCurve,cohCurve,dvvCohCurve],
+            [layout,coh_layout,dvvCurveLayout,cohCurveLayout,dvvCohLayout]
+        );
     }
     else{
         graphDiv.after('<div class="dVv">To plot dv/v, select a station from the pull-down in the title</div>');
@@ -993,6 +1003,78 @@ function dvvCurvePlot(x,y,idx){
     const layout={
         yaxis:{
             title:"dv/v(%)"
+        }
+    }
+
+    return [datas,layout]
+}
+
+function dvvCohCurvePlot(x,y,color,idx){
+    const colors = ['blue', 'red','green', 'purple','grey'];
+    const datas=[];
+    let i=0;
+    for(const [title,values] of Object.entries(y)){
+        let cval=color[title];
+        let trace={
+            x:x,
+            y:values,
+            type:'scatter',
+            mode:'markers',
+            marker:{
+                color: colors[i],
+                opacity:cval,
+            },
+            line:{
+                color:colors[i]
+            },
+            name:title,
+            connectgaps:false
+        }
+
+        datas.push(trace)
+        i++;
+    }
+
+    const transparencyValues = [0.0, 0.2, 0.4, 0.6, 0.8, 1.0];
+    const barTrace={
+        x:[null],
+        y:[null],
+        mode:'markers',
+        marker:{
+            color: transparencyValues,
+            colorscale:[[0,'rgba(0,0,0,0)'],[1,'rgba(0,0,0,1']],
+            cmin:0,
+            cmax:1,
+            showscale:true,
+            colorbar:{
+                title:'Coherence Value',
+                titleside:'right',
+                ticksuffix: '',
+                tickvals:transparencyValues,
+                thickness:15
+            }
+        },
+        showlegend:false
+    }
+
+    datas.push(barTrace);
+
+    const layout={
+        yaxis:{
+            title:"dv/v(%)",
+            showline:true,
+            mirror:true,
+        },
+        xaxis:{
+            showline:true,
+            mirror:true,
+        },
+        legend:{
+            x:0.02,
+            y:0.97,
+            bgcolor:'#F3F3F3',
+            bordercolor:'#DDDDDD',
+            borderwidth:1
         }
     }
 

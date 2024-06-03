@@ -758,56 +758,53 @@ def freqslice(df):
         range_data = byfreq.loc[frange[0] : frange[1]]
         range_data = range_data.mean().rolling(30, min_periods=10).mean()
         sliced_df[col_name] = range_data
-        
-    return sliced_df.asfreq('30T', fill_value=numpy.NaN).sort_index()
+
+    curves = sliced_df.asfreq('30T', fill_value=numpy.NaN).sort_index()
+    dates = pandas.Series(curves.index).dt.strftime('%Y-%m-%d %H:%M:%S').to_list()
+
+    return (curves, dates)
 
 def heatmap_values(df):
     # make sure I have data for every half hour, even if NaN
     filled = df.asfreq('30T', fill_value=numpy.NaN)
     ewm_df = filled.ewm(span=30).mean().astype(float)
     ewm_df[filled.isnull()] = numpy.nan
-    
+
     dates = pandas.Series(ewm_df.index).dt.strftime('%Y-%m-%d %H:%M:%S').tolist()
     ewm_df = ewm_df.T.sort_index()
     freq = ewm_df.index.tolist()
     values = ewm_df.values.tolist()
-    
+
     return (dates, freq, values)
 
 @app.route('/getdVvData')
 def get_dvv_data():
     sta1 = flask.request.args['sta1']
     sta2 = flask.request.args['sta2']
-    
+
     SQL = "SELECT datetime, coh, dvv FROM wct WHERE sta1=%s and sta2=%s ORDER BY datetime;"
     with utils.db_cursor() as cursor:
-        
+
         cursor.execute('SELECT id FROM stations WHERE name in %s', ((sta1, sta2), ) )
         pair = [x[0] for x in cursor]
-        
+
         cursor.execute(SQL, pair)
         dvv_data = pandas.DataFrame(cursor, columns=['date', 'coh', 'dvv'])
-        
+
     dvv_data = dvv_data.set_index(['date'])
-    
+
     dvv = dvv_data['dvv'].apply(pandas.Series)
     coh = dvv_data['coh'].apply(pandas.Series)
-    
-    dvv_freq_curves = freqslice(dvv)
-    dvv_curve_dates = (
-        pandas.Series(dvv_freq_curves.index).dt.strftime('%Y-%m-%d %H:%M:%S').to_list()
-    )
+
+    dvv_freq_curves,dvv_curve_dates = freqslice(dvv)
     dvv_curves = dvv_freq_curves.to_dict('list')
-    
-    coh_freq_curves = freqslice(coh)
-    coh_curve_dates = (
-        pandas.Series(coh_freq_curves.index).dt.strftime('%Y-%m-%d %H:%M:%S').to_list()
-    )
+
+    coh_freq_curves,coh_curve_dates = freqslice(coh)
     coh_curves = coh_freq_curves.to_dict('list')
-    
+
     dvv_dates, dvv_freq, dvv_values = heatmap_values(dvv)
-    coh_dates, coh_freq, coh_values = heatmap_values(coh)    
-    
+    coh_dates, coh_freq, coh_values = heatmap_values(coh)
+
     result = {
         'heatX': dvv_dates,
         'heatY': dvv_freq,
@@ -820,7 +817,7 @@ def get_dvv_data():
         'cohCurves': coh_curves,
         'cohCurveDates': coh_curve_dates,
     }
-    
+
     str_data = ujson.dumps(result)
     str_data = str_data.replace("NaN", "null")
     return flask.Response(response=str_data, status=200,
@@ -835,19 +832,19 @@ def get_dvv_pairs():
     FROM wct
     WHERE %s <@ sta_pair
     ORDER BY 1'''
-    
+
     with utils.db_cursor() as cursor:
         cursor.execute('SELECT id FROM stations WHERE name=%s', (sta, ))
         staid = cursor.fetchone()[0]
-        
+
         cursor.execute(SQL, [staid, [staid]])
         pairs = [x[0] for x in cursor]
-        
+
     json_pairs = ujson.dumps(pairs)
     return json_pairs
 
 
-    
+
 @app.route('/listRegionEntropies')
 def list_region_entropies():
     bounds = json.loads(flask.request.args['bounds'])
@@ -919,7 +916,7 @@ SELECT
     volcano,
     station,
     staid
-FROM	
+FROM
     (SELECT
             stations.name as station,
             volcanoes.site as volcano,
@@ -935,16 +932,16 @@ ORDER BY volcano, station"""
     with utils.db_cursor() as cursor:
         cursor.execute(SQL, [volcs, ])
         results = pandas.DataFrame(cursor, columns=['volc', 'station', 'staid'])
-        
+
     results['img'] = "static/img/entropy/" + results['station'] + ".png"
     grouped = results.groupby('volc')
-    
+
     output = []
     for name, group in grouped:
         group = group.set_index('station')
         volc_stations = group[['img', 'staid']].to_dict('index')
         output.append({'volc': name,'stations': volc_stations,})
-        
+
     return flask.jsonify(output)
 
 @app.route('/listEventImages')
