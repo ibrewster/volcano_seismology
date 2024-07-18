@@ -15,6 +15,7 @@ import psycopg
 from pathlib import Path
 
 from dVv.compile_msnoise_C2 import main as run_msnoise
+from dVv.CleanCSV import clean_output
 
 from obspy import UTCDateTime
 
@@ -101,7 +102,8 @@ def process_output(output_dir, volc):
         sta1 = STA_LOOKUP[parts[1]]
         sta2 = STA_LOOKUP[parts[3]]
 
-
+        clean_output(pair_dir, sta1, sta2)
+        
         for csv_file in pair_dir.glob("*.csv"):
             data = pandas.read_csv(csv_file, parse_dates = [0])
             data['sta1'] = sta1
