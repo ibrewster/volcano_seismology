@@ -35,7 +35,7 @@ def clean_output(pairdir, sta1, sta2):
         )
         try:
             start_time = cursor.fetchone()[0]
-        except IndexError:
+        except TypeError:
             #  No data for this station pair
             return  #  Don't do anything if we couldn't get a start date.
         start_time = start_time.replace(

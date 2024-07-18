@@ -93,14 +93,18 @@ def process_output(output_dir, volc):
 
     output = pandas.DataFrame(columns = ['sta1', 'sta2', 'datetime', 'dvv', 'coh', 'err'])
     output = output.set_index(['sta1', 'sta2', 'datetime'])
+    
+    print(f"--------Compiling result data--------------")
 
     for pair_dir in pair_base.iterdir():
         if not pair_dir.is_dir():
-            continue # Probably something like .DS_Store
+            continue  # Probably something like .DS_Store
 
         parts = pair_dir.name.split('_')
         sta1 = STA_LOOKUP[parts[1]]
         sta2 = STA_LOOKUP[parts[3]]
+        
+        print(f"----------{parts[1]}--{parts[3]}------------")
 
         clean_output(pair_dir, sta1, sta2)
         
@@ -124,8 +128,8 @@ def process_output(output_dir, volc):
     output = output.reset_index()
     output['volc'] = volc
     output['datetime'] = pandas.Series(output['datetime'].dt.to_pydatetime(), dtype = object)
-    values = output.to_dict(orient = "records")
-    return values
+    # values = output.to_dict(orient = "records")
+    return output
 
 
 def run_compute():
@@ -150,6 +154,9 @@ def run_compute():
     print(f"--------Using {workers} workers-------")
     with ProcessPoolExecutor(initializer=init_lookups, max_workers=workers) as executor:
         for volc in volcs:
+            if volc != 'Veniaminof':
+                continue
+            
             if volc == 'Unknown':
                 continue
 
@@ -184,7 +191,7 @@ def run_compute():
                 ########## DEBUG ###########
                 # results = proc
                 ############################
-                if not results:
+                if len(results) == 0:
                     print(f"********No results generated for {volc}*************")
                 else:
                     print(f"--------Submitting results for {volc} to db--------------")
@@ -199,33 +206,39 @@ def run_compute():
         print("***Complete in", (time.time() - t1) / 60)
 
 
-def submit_results(values):
-    value_sql = "(%(datetime{idx})s, %(volc{idx})s, %(sta1{idx})s, %(sta2{idx})s, %(dvv{idx})s, %(coh{idx})s, %(err{idx})s)"
-
-    sql_placeholders = []
-    args = {}
-    for idx, value_dict in enumerate(values):
-        sql_placeholders.append(value_sql.format(idx=idx))
-        for key, value in value_dict.items():
-            key += str(idx)
-            args[key] = value
-
-    SQL = "INSERT INTO wct (datetime,volc,sta1,sta2,dvv,coh,error) VALUES\n"
-    SQL += ",\n".join(sql_placeholders)
-    # SQL += value_sql
-    SQL += """
-    ON CONFLICT (datetime,volc,sta1,sta2) DO UPDATE SET
-    dvv=EXCLUDED.dvv,
-    coh=EXCLUDED.coh,
-    error=EXCLUDED.error"""
-
-    with DBCursor() as cursor:
-        try:
-            cursor.execute(SQL, args)
-        except Exception as e:
-            print(e)
-
-        cursor.connection.commit()
+def submit_results(value_df):
+    #  Keep this value small enough to not overload the system
+    chunk_size = 1000
+    print("Total length:", len(value_df), "Processing in chunks of:", chunk_size)
+    for idx, value_chunk in value_df.groupby(numpy.arange(len(value_df)) // chunk_size):
+        print("Processing chunk", idx + 1)
+        values = value_chunk.to_dict(orient="records")
+        value_sql = "(%(datetime{idx})s, %(volc{idx})s, %(sta1{idx})s, %(sta2{idx})s, %(dvv{idx})s, %(coh{idx})s, %(err{idx})s)"
+    
+        sql_placeholders = []
+        args = {}
+        for idx, value_dict in enumerate(values):
+            sql_placeholders.append(value_sql.format(idx=idx))
+            for key, value in value_dict.items():
+                key += str(idx)
+                args[key] = value
+    
+        SQL = "INSERT INTO wct (datetime,volc,sta1,sta2,dvv,coh,error) VALUES\n"
+        SQL += ",\n".join(sql_placeholders)
+        # SQL += value_sql
+        SQL += """
+        ON CONFLICT (datetime,volc,sta1,sta2) DO UPDATE SET
+        dvv=EXCLUDED.dvv,
+        coh=EXCLUDED.coh,
+        error=EXCLUDED.error"""
+    
+        with DBCursor() as cursor:
+            try:
+                cursor.execute(SQL, args)
+            except Exception as e:
+                print(e)
+    
+            cursor.connection.commit()
 
 
 if __name__ == "__main__":
