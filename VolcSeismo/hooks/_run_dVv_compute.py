@@ -154,9 +154,6 @@ def run_compute():
     print(f"--------Using {workers} workers-------")
     with ProcessPoolExecutor(initializer=init_lookups, max_workers=workers) as executor:
         for volc in volcs:
-            if volc != 'Veniaminof':
-                continue
-            
             if volc == 'Unknown':
                 continue
 
