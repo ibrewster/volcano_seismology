@@ -163,20 +163,8 @@ function generateGraphs() {
 
     dest.show();
 
-    const dateFromFld = dest.find('input.dateFrom');
-    const dateToFld = dest.find('input.dateTo');
-
-    let dateFrom = dateFromFld.val();
-    let dateTo = dateToFld.val();
-
-    if (dateFrom == '') {
-        dateFrom = new Date(new Date() - 604800000); //one-week
-        dateTo = new Date();
-        dateFrom = formatDateString(dateFrom);
-        dateTo = formatDateString(dateTo);
-        dateFromFld.val(dateFrom);
-        dateToFld.val(dateTo);
-    }
+    let dateFrom,dateTo;
+    [dateFrom,dateTo]=getDates(dest);
 
     var reqParams = {
         'station': station,
@@ -525,8 +513,38 @@ function dateRangeClicked() {
     $(this).addClass('active');
 }
 
-function getdVvData(dest,data,sta1,sta2){
-    const future=$.getJSON('getdVvData',{sta1:sta1, sta2:sta2})
+function getDates(dest){
+    const dateFromFld = dest.find('input.dateFrom');
+    const dateToFld = dest.find('input.dateTo');
+
+    let dateFrom = dateFromFld.val();
+    let dateTo = dateToFld.val();
+
+    if (dateFrom == '') {
+        dateFrom = new Date(new Date() - 604800000); //one-week
+        dateTo = new Date();
+        dateFrom = formatDateString(dateFrom);
+        dateTo = formatDateString(dateTo);
+        dateFromFld.val(dateFrom);
+        dateToFld.val(dateTo);
+    }
+    
+    return [dateFrom, dateTo];
+}
+
+function getdVvData(dest,data,sta1,sta2,dfrom,dto){
+    let dateFrom,dateTo;
+    [dateFrom,dateTo]=getDates(dest);
+    
+    const args={
+        sta1:sta1,
+        sta2:sta2,
+        dFrom:dateFrom,
+        dTo:dateTo
+    }
+    
+        
+    const future=$.getJSON('getdVvData',args)
     .done(function(dvvData){
         dVvStation=sta2;
         for(const [key,value] of Object.entries(dvvData)){

@@ -781,14 +781,26 @@ def heatmap_values(df):
 def get_dvv_data():
     sta1 = flask.request.args['sta1']
     sta2 = flask.request.args['sta2']
+    
+    dfrom = flask.request.args.get('dFrom')
+    dto = flask.request.args.get('dTo')
 
-    SQL = "SELECT datetime, coh, dvv FROM wct WHERE sta1=%s and sta2=%s ORDER BY datetime;"
+    SQL = "SELECT datetime, coh, dvv FROM wct WHERE sta1=%s and sta2=%s"
+    
+
     with utils.db_cursor() as cursor:
 
         cursor.execute('SELECT id FROM stations WHERE name in %s', ((sta1, sta2), ) )
-        pair = [x[0] for x in cursor]
+        args = [x[0] for x in cursor]
+        
+        if dfrom and dto:
+            SQL += " AND datetime>=%s AND datetime<=%s"
+            args.append(dfrom)
+            args.append(dto)
+        
+        SQL += " ORDER BY datetime;"
 
-        cursor.execute(SQL, pair)
+        cursor.execute(SQL, args)
         dvv_data = pandas.DataFrame(cursor, columns=['date', 'coh', 'dvv'])
 
     dvv_data = dvv_data.set_index(['date'])
