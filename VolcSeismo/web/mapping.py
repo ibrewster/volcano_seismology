@@ -759,14 +759,16 @@ def freqslice(df):
         range_data = range_data.mean().rolling(30, min_periods=10).mean()
         sliced_df[col_name] = range_data
 
-    curves = sliced_df.asfreq('30T', fill_value=numpy.NaN).sort_index()
+    if len(sliced_df) == 0:
+        return (sliced_df, [])
+    curves = sliced_df.asfreq('30T', fill_value=numpy.nan).sort_index()
     dates = pandas.Series(curves.index).dt.strftime('%Y-%m-%d %H:%M:%S').to_list()
 
     return (curves, dates)
 
 def heatmap_values(df):
     # make sure I have data for every half hour, even if NaN
-    filled = df.asfreq('30T', fill_value=numpy.NaN)
+    filled = df.asfreq('30T', fill_value=numpy.nan)
     ewm_df = filled.ewm(span=30).mean().astype(float)
     ewm_df[filled.isnull()] = numpy.nan
 
@@ -803,6 +805,20 @@ def get_dvv_data():
         cursor.execute(SQL, args)
         dvv_data = pandas.DataFrame(cursor, columns=['date', 'coh', 'dvv'])
 
+    if len(dvv_data) == 0:
+        return {
+            'heatX': [],
+            'heatY': [],
+            'heatZ': [],
+            'cohX': [],
+            'cohY': [],
+            'cohZ': [],
+            'dvvCurves': [],
+            'dvvCurveDates': [],
+            'cohCurves': [],
+            'cohCurveDates': [],
+        }
+    
     dvv_data = dvv_data.set_index(['date'])
 
     dvv = dvv_data['dvv'].apply(pandas.Series)
