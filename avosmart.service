@@ -1,0 +1,13 @@
+[Unit]
+Description = avosmart web service
+After = network.target
+
+[Service]
+ExecStart = /shared/apps/avosmart/avosmart-env/bin/uwsgi -i /shared/apps/avosmart/VolcSeismo/web/volcseismo.ini
+RuntimeDirectory = avosmart
+RuntimeDirectoryMode = 777
+Restart=on-failure
+RestartSec=15s
+
+[Install]
+WantedBy = multi-user.target
