@@ -134,13 +134,15 @@ class PostgresCursor:
         self._db_user = pg_config['db_user']
         self._db_password = pg_config['db_password']
         self._db_name = pg_config['db_name']
+        self._db_superpass=pg_config['db_superpass']
+        self._db_superuser=pg_config['db_superuser']
 
     def __enter__(self):
         self._conn = psycopg2.connect(host=self._db_host,
                                       database=self._db_name,
                                       cursor_factory=self._cursor_factory,
-                                      user=self._db_user,
-                                      password = self._db_password)
+                                      user=self._db_superuser,
+                                      password = self._db_superpass)
         self._cursor = self._conn.cursor()
         return self._cursor
 
@@ -293,7 +295,7 @@ def generate_stations():
             name = station_data['name']
             table_name = f"data_{name}"
 
-            TABLE_SQL = f"""CREATE TABLE IF NOT EXISTS {table_name}
+            TABLE_SQL = f"""CREATE TABLE IF NOT EXISTS data_parts.{table_name}
             PARTITION OF data
             FOR VALUES IN ({staid})
             PARTITION BY LIST (channel)
@@ -310,8 +312,8 @@ def generate_stations():
                 print("Creating channel table for", channel_table_name)
 
                 CHANNEL_SQL = f"""
-                CREATE TABLE IF NOT EXISTS {channel_table_name}
-                PARTITION OF {table_name}
+                CREATE TABLE IF NOT EXISTS data_parts.{channel_table_name}
+                PARTITION OF data_parts.{table_name}
                 FOR VALUES IN ('{channel}')
                 WITH (autovacuum_vacuum_insert_scale_factor=0.005, autovacuum_freeze_min_age=0, autovacuum_analyze_scale_factor='0.005')
                 TABLESPACE pool
