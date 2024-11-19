@@ -3,18 +3,18 @@ import psycopg2
 from psycopg2.extras import RealDictCursor
 
 from . import app
-
+from VolcSeismo.config import config
 
 class db_cursor():
     def __init__(self, cursor_factory=None):
         self._cursor_factory = cursor_factory
 
     def __enter__(self):
-        self._conn = psycopg2.connect(host='137.229.113.120',
-                                      database='volcano_seismology',
+        self._conn = psycopg2.connect(host=config['PostgreSQL']['db_host'],
+                                      database=config['PostgreSQL']['db_name'],
                                       cursor_factory=self._cursor_factory,
-                                      user="geodesy",
-                                      password = 'G30dE$yU@F')
+                                      user=config['PostgreSQL']['db_user'],
+                                      password = config['PostgreSQL']['db_password'])
         self._cursor = self._conn.cursor()
         return self._cursor
 

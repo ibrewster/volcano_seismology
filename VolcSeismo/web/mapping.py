@@ -623,7 +623,7 @@ def load_db_data(station, channel,
                {row_percent}
          ) --percentage of the table we are interested in
 	)
-        FROM {split_table_name}
+        FROM data_parts.{split_table_name}
 """
 
     print("Using tablesample factor of", tablesample_factor)
@@ -707,7 +707,8 @@ FROM
         if factor == 'auto':
             cursor.execute(PERCENT_SQL, args)
             factor = cursor.fetchone()[0]
-            epoch = f'{int(round(factor))}=0'
+            factor = int(round(factor)) or 1
+            epoch = f'{factor}=0'
         else:
             epoch = PERCENT_LOOKUP.get(factor,'1=0');
 

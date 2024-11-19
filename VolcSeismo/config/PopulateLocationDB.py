@@ -1,5 +1,5 @@
 from station_config import locations
-from gen_station_config import VOLCS
+# from gen_station_config import VOLCS
 
 import psycopg2
 
@@ -118,7 +118,7 @@ bounds = {
                       'east': 179.05058413085936}
 }
 
-SQL = """INSERT INTO locations
+SQL = """INSERT INTO volcanoes
 (site,
 latitude,
 longitude,
@@ -145,16 +145,17 @@ radius=%(radius)s,
 location=ST_SetSRID(ST_MakePoint(%(longitude)s,%(latitude)s),4326)::geography
 """
 
-dbCon = psycopg2.connect(host = '137.229.113.120', user = 'israel',
+dbCon = psycopg2.connect(host = '172.16.16.206', user = 'israel',
                          password = 'Sh@nima1981', database = 'volcano_seismology')
 
 cursor = dbCon.cursor()
 
-for loc, items in locations.items():
+for locdict in locations:
+    loc = locdict['site']
     args = bounds[loc]
     args['site'] = loc
-    args['radius'] = VOLCS[loc].get('radius', 150)
-    args.update(items)
+    args['radius'] = 150
+    args.update(locdict)
     cursor.execute(SQL, args)
 
 dbCon.commit()
