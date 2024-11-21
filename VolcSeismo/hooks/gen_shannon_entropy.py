@@ -82,6 +82,7 @@ def run(stream, times, station, metadata):
         CREATE TABLE entropy_parts.{station.lower()}_entropy
         PARTITION OF shannon_entropy
         FOR VALUES IN ({staid})
+        TABLESPACE pool
         """
         cursor.connection.rollback()
         cursor.execute(CREATE_TABLE)
