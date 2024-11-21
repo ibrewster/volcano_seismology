@@ -788,7 +788,7 @@ def get_dvv_data():
     dfrom = flask.request.args.get('dFrom')
     dto = flask.request.args.get('dTo')
 
-    SQL = "SELECT datetime, coh, dvv FROM wct WHERE sta1=%s and sta2=%s"
+    SQL = "SELECT datetime, coh, dvv FROM wct WHERE sta_pair @> ARRAY[%s, %s]::int[]"
     
 
     with utils.db_cursor() as cursor:
