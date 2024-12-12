@@ -95,7 +95,10 @@ def process_output(output_dir, volc):
     output = pandas.DataFrame(columns = ['sta1', 'sta2', 'datetime', 'dvv', 'coh', 'err'])
     output = output.set_index(['sta1', 'sta2', 'datetime'])
     
-    print(f"--------Compiling result data--------------")
+    print(f"--------Compiling result data for {volc}--------------")
+    if not pair_base.is_dir():
+        print(f"{volc} base output directory ({pair_base}) does not exist.")
+        return output
 
     for pair_dir in pair_base.iterdir():
         if not pair_dir.is_dir():
@@ -196,8 +199,8 @@ def run_compute():
                     print(f"--------Submitting results for {volc} to db--------------")
                     submit_results(results)
             except Exception as e:
-                logging.error(
-                    "!!!!!!!!!!!!!!Unable to generate results for %s:\n%s!!!!!!!!!!!",
+                logging.exception(
+                    "\n!!!!!!!!!!!!!!\nUnable to generate results for %s:\n%s\n!!!!!!!!!!!",
                     volc,
                     str(e),
                 )
