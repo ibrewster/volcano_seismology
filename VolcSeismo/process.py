@@ -82,7 +82,7 @@ def run(ENDTIME = None):
     # Run the hook scripts
     procs = []
     avail = get_availability()
-    with ProcessPoolExecutor(initializer=set_availability, initargs=(avail, )) as executor:
+    with ProcessPoolExecutor(max_workers=14, initializer=set_availability, initargs=(avail, )) as executor:
         for start, end, locs in gen_times:
             # Create a temporary directory that we can use to avoid duplicating effort
             # if the same station appears for multiple volcanos.

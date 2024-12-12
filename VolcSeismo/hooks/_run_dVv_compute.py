@@ -50,12 +50,13 @@ class DBCursor():
 def get_lookups():
     with DBCursor() as cursor:
         cursor.execute("SELECT name,id FROM stations")
-        station_lookup = {x[0]: int(x[1]) for x in cursor}
+        station_lookup = {x[0].decode(): int(x[1]) for x in cursor}
+        print(station_lookup)
         station_lookup[numpy.nan] = station_lookup['__AVG']
         station_lookup[None] = station_lookup['__AVG']
 
         cursor.execute("SELECT site,id FROM volcanoes")
-        volc_lookup = {x[0]: x[1] for x in cursor}
+        volc_lookup = {x[0].decode(): x[1] for x in cursor}
 
     return (station_lookup, volc_lookup)
 
@@ -150,11 +151,11 @@ def run_compute():
     # DEBUG
     # start_str, end_str = '2023-09-30', '2023-10-01'
     procs = []
-    workers = min(len(volcs), 15)
+    workers = min(len(volcs), 3)
     print(f"--------Using {workers} workers-------")
     with ProcessPoolExecutor(initializer=init_lookups, max_workers=workers) as executor:
         for volc in volcs:
-            if volc == 'Unknown':
+            if volc == 'Unknown' or volc not in VOLC_LOOKUP:
                 continue
 
             print(f"--------------Submitting {volc} for processing-----------------")
@@ -167,6 +168,7 @@ def run_compute():
                     os.unlink(os.path.join(output_dir, old_file))
                 except FileNotFoundError:
                     pass
+
 
             proc = executor.submit(process_dVv, data_location, output_dir, start_str, end_str, VOLC_LOOKUP[volc])
             procs.append((volc, proc))
