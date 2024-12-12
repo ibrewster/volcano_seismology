@@ -196,8 +196,8 @@ def run_compute():
                     print(f"--------Submitting results for {volc} to db--------------")
                     submit_results(results)
             except Exception as e:
-                logging.exception(
-                    "!!!!!!!!!!!!!!Unable to generate results for %s: %s!!!!!!!!!!!",
+                logging.error(
+                    "!!!!!!!!!!!!!!Unable to generate results for %s:\n%s!!!!!!!!!!!",
                     volc,
                     str(e),
                 )
