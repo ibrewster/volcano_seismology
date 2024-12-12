@@ -99,6 +99,8 @@ def process_output(output_dir, volc):
     if not pair_base.is_dir():
         print(f"{volc} base output directory ({pair_base}) does not exist.")
         return output
+    else:
+        print(f"Found base output directory ({pair_base}) for {volc}. Scanning...")
 
     for pair_dir in pair_base.iterdir():
         if not pair_dir.is_dir():
