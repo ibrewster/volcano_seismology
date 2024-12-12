@@ -7,6 +7,7 @@ import numpy as np
 import pandas
 import psycopg2
 import scipy.stats as stats
+import matplotlib
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 
@@ -15,7 +16,8 @@ try:
 except ImportError:
     import _process_r_vars as VARS
     
-    
+
+matplotlib.rcParams['agg.path.chunksize'] = 10000  # Increase the chunk size as needed    
 def run(stream, times, station, metadata):
     stream.filter('bandpass', freqmin=1.0, freqmax=16)
     
