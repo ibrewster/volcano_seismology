@@ -4,6 +4,7 @@ import os
 from datetime import datetime, timedelta
 from io import StringIO
 
+import matplotlib
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 import pandas
@@ -21,7 +22,7 @@ except ImportError:
     import _process_r_vars as VARS
     import config as CONFIG
     
-
+matplotlib.rcParams['agg.path.chunksize'] = 10000  # Increase the chunk size as needed
 def run(stream, times, station, metadata):
     # What it says
     stream.detrend()
